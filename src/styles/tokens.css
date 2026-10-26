@@ -1,0 +1,8 @@
+:root {
+  --teal-900:#073746; --teal-700:#0b6479; --teal-500:#1096b0; --teal-100:#dcf2f7;
+  --gold-600:#a97800; --gold-500:#d8a31a; --gold-100:#fbf1d3;
+  --orange-500:#f58a1f; --orange-100:#fde8d0;
+  --bg:#f4f7f9; --card:#fff; --line:#e2e8ee; --text:#18232e; --muted:#667585;
+  --brand:var(--teal-700); --danger:#b42318; --ok:#067647; --warn:#b54708; --info:#175cd3;
+  --radius:10px; --sidebar-w:250px; --topbar-h:60px;
+}
