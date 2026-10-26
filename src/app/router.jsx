@@ -4,9 +4,13 @@ import AppShell from '@/components/layout/AppShell';
 import ProtectedRoute from '@/features/auth/ProtectedRoute';
 import RequirePermission from '@/features/auth/RequirePermission';
 import LoginPage from '@/features/auth/LoginPage';
+
+const Trips = lazy(() => import("@/features/Trips/pages/TripsPage"));
+
 const TripEditPage = lazy(() =>
   import("@/features/Trips/pages/TripEditPage")
 );
+
  const Dashboard     = lazy(() => import('@/features/dashboard/DashboardPage'));
 const Bookings      = lazy(() => import('@/features/bookings/pages/Bookings'));
 const BookingDetail = lazy(() => import('@/features/bookings/pages/BookingDetail'));
@@ -38,7 +42,7 @@ export const router = createBrowserRouter([
 { path: 'trips/:id',      element: guard('trips.manage', <TripEditPage scope="packages" />) },
 { path: 'circuits',       element: guard('trips.manage', <Trips scope="circuits" />) },
 { path: 'circuits/new',   element: guard('trips.manage', <TripEditPage scope="circuits" />) },
-{ path: 'circuits/:id',   element: guard('trips.manage', <TripEditPage scope="circuits" />) },,
+{ path: 'circuits/:id',   element: guard('trips.manage', <TripEditPage scope="circuits" />) },
       { path: 'fleet/live',    element: guard('fleet.track', <LiveMap />) },
       { path: '*',             element: <div className="center">Page introuvable.</div> },
     { path: 'destinations',     element: guard('destinations.manage', <Destinations />) },
