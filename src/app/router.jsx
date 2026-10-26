@@ -4,9 +4,10 @@ import AppShell from '@/components/layout/AppShell';
 import ProtectedRoute from '@/features/auth/ProtectedRoute';
 import RequirePermission from '@/features/auth/RequirePermission';
 import LoginPage from '@/features/auth/LoginPage';
-const Trips        = lazy(() => import('@/features/trips/pages/TripsPage'));
-const TripEditPage = lazy(() => import('@/features/trips/pages/TripEditPage'));
-const Dashboard     = lazy(() => import('@/features/dashboard/DashboardPage'));
+const TripEditPage = lazy(() =>
+  import("@/features/Trips/pages/TripEditPage")
+);
+ const Dashboard     = lazy(() => import('@/features/dashboard/DashboardPage'));
 const Bookings      = lazy(() => import('@/features/bookings/pages/Bookings'));
 const BookingDetail = lazy(() => import('@/features/bookings/pages/BookingDetail'));
  const LiveMap       = lazy(() => import('@/features/fleet/tracking/LiveMapPage'));
