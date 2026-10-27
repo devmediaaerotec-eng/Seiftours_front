@@ -3,8 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import Providers from './providers';
 import { router } from './router';
-import '@/styles/tokens.css';
-import '@/styles/base.css';
+import '@fontsource-variable/inter';
+import '@/styles/index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

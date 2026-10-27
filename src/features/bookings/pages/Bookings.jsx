@@ -1,29 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api } from '@/lib/http';
+import { CalendarCheck } from 'lucide-react';
+import Alert from '@/components/ui/Alert';
+import Badge from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import DataTable from '@/components/ui/DataTable';
+import { FilterBar, SearchBox } from '@/components/ui/Filters';
+import PageHeader from '@/components/ui/PageHeader';
+import Pagination from '@/components/ui/Pagination';
 import { STATUS, fmtDate, money } from '@/lib/format';
+import { bookings } from '../resource';
 
 export default function Bookings() {
   const [params, setParams] = useSearchParams();
   const status = params.get('status') || '';
   const q = params.get('q') || '';
   const page = Number(params.get('page') || 1);
-
   const [search, setSearch] = useState(q);
-  const [data, setData] = useState({ items: [], total: 0, limit: 20 });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    const qs = new URLSearchParams({ page, limit: 20 });
-    if (status) qs.set('status', status);
-    if (q) qs.set('q', q);
-    api(`/admin/bookings?${qs}`)
-      .then((d) => { setData(d); setError(''); })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [status, q, page]);
+  const { data, isLoading, error } = bookings.useList({ status, q, page, limit: 20 });
 
   const update = (patch) => {
     const next = new URLSearchParams(params);
@@ -31,57 +26,43 @@ export default function Bookings() {
     setParams(next);
   };
 
-  const pages = Math.max(1, Math.ceil(data.total / data.limit));
-
   return (
     <>
-      <h2>Réservations</h2>
+      <PageHeader title="Réservations" description="Suivez les devis agence et les paiements en ligne." />
 
-      <div className="filters">
-        <form onSubmit={(e) => { e.preventDefault(); update({ q: search.trim(), page: '' }); }}>
-          <input placeholder="Référence, nom, e-mail, téléphone…" value={search}
-                 onChange={(e) => setSearch(e.target.value)} />
-          <button className="btn">Rechercher</button>
-        </form>
-        <select value={status} onChange={(e) => update({ status: e.target.value, page: '' })}>
+      <FilterBar>
+        <SearchBox value={search} onChange={setSearch} onSubmit={() => update({ q: search.trim(), page: '' })}
+                   placeholder="Référence, nom, e-mail, téléphone…" />
+        <select className="w-auto min-w-48" value={status} onChange={(e) => update({ status: e.target.value, page: '' })}>
           <option value="">Tous les statuts</option>
           {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
-      </div>
+      </FilterBar>
 
-      {error && <div className="alert bad">{error}</div>}
+      {error && <Alert tone="bad">{error.message}</Alert>}
 
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Référence</th><th>Client</th><th>Hôtel</th><th>Séjour</th>
-              <th>Total</th><th>Payé</th><th>Agence</th><th>Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.items.map((b) => (
-              <tr key={b.id}>
-                <td><Link to={`/bookings/${b.reference}`}>{b.reference}</Link></td>
-                <td>{b.customer_name}<br /><small className="muted">{b.phone}</small></td>
-                <td>{b.hotel_name}</td>
-                <td>{fmtDate(b.check_in)} → {fmtDate(b.check_out)}<br /><small className="muted">{b.nights} nuits</small></td>
-                <td>{money(b.total_millimes)}</td>
-                <td>{money(b.paid_millimes)}</td>
-                <td>{b.branch_name || '—'}</td>
-                <td><span className={`badge ${STATUS[b.status]?.cls}`}>{STATUS[b.status]?.label || b.status}</span></td>
-              </tr>
-            ))}
-            {!loading && data.items.length === 0 && <tr><td colSpan="8" className="muted">Aucun résultat.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <Card padded={false} className="overflow-hidden">
+        <DataTable
+          loading={isLoading}
+          rows={data?.items}
+          empty="Aucune réservation ne correspond à ces critères."
+          columns={[
+            { key: 'reference', label: 'Référence', render: (b) => <Link to={`/bookings/${b.reference}`} className="font-medium">{b.reference}</Link> },
+            { key: 'client', label: 'Client', render: (b) => (<>{b.customer_name}<span className="block text-xs text-slate-500">{b.phone}</span></>) },
+            { key: 'hotel', label: 'Hôtel', render: (b) => b.hotel_name || '—' },
+            { key: 'stay', label: 'Séjour', render: (b) => (
+              <span className="whitespace-nowrap">{fmtDate(b.check_in)} → {fmtDate(b.check_out)}
+                <span className="block text-xs text-slate-500">{b.nights} nuits</span></span>
+            ) },
+            { key: 'total', label: 'Total', render: (b) => <span className="whitespace-nowrap">{money(b.total_millimes)}</span> },
+            { key: 'paid', label: 'Payé', render: (b) => <span className="whitespace-nowrap">{money(b.paid_millimes)}</span> },
+            { key: 'branch', label: 'Agence', render: (b) => b.branch_name || <span className="text-slate-400">—</span> },
+            { key: 'status', label: 'Statut', render: (b) => <Badge tone={STATUS[b.status]?.cls} dot>{STATUS[b.status]?.label || b.status}</Badge> },
+          ]}
+        />
+      </Card>
 
-      <div className="pager">
-        <button className="btn ghost" disabled={page <= 1} onClick={() => update({ page: String(page - 1) })}>← Précédent</button>
-        <span>Page {page} / {pages} · {data.total} réservation(s)</span>
-        <button className="btn ghost" disabled={page >= pages} onClick={() => update({ page: String(page + 1) })}>Suivant →</button>
-      </div>
+      <Pagination page={page} total={data?.total ?? 0} limit={data?.limit ?? 20} onChange={(p) => update({ page: p > 1 ? String(p) : '' })} />
     </>
   );
 }

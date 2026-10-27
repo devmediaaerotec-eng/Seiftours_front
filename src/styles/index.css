@@ -1,0 +1,108 @@
+@layer theme, base, legacy, components, utilities;
+
+@import 'tailwindcss';
+@import './tokens.css';
+@import './legacy.css';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Turquoise du logo */
+  --color-brand-50: #eefafc;
+  --color-brand-100: #d3f1f6;
+  --color-brand-200: #a9e2ed;
+  --color-brand-300: #6fcce0;
+  --color-brand-400: #34b0cb;
+  --color-brand-500: #1096b0;
+  --color-brand-600: #0c7a93;
+  --color-brand-700: #0b6479;
+  --color-brand-800: #0c5063;
+  --color-brand-900: #0a4254;
+  --color-brand-950: #062c39;
+
+  /* Or du logo */
+  --color-gold-50: #fffaeb;
+  --color-gold-100: #fdf0c6;
+  --color-gold-200: #fbe08a;
+  --color-gold-300: #f7ca4d;
+  --color-gold-400: #efb21f;
+  --color-gold-500: #d8a31a;
+  --color-gold-600: #b57e0c;
+  --color-gold-700: #8f5e0c;
+  --color-gold-800: #744b11;
+  --color-gold-900: #613f12;
+
+  --animate-fade-in: fade-in 0.15s ease-out;
+  --animate-pop: pop 0.18s ease-out;
+  --animate-slide-up: slide-up 0.2s ease-out;
+  --animate-slide-in: slide-in 0.2s ease-out;
+
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+  @keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes slide-in { from { transform: translateX(-100%); } to { transform: none; } }
+}
+
+/* ------------------------------------------------------------------------------------
+   Compatibilité : restyle l'ancien CSS (couche "legacy") avec le nouveau design.
+   À SUPPRIMER avec legacy.css quand plus aucune page n'utilise ces classes.
+------------------------------------------------------------------------------------ */
+@layer components {
+  body { @apply bg-slate-50 font-sans text-slate-800 antialiased; }
+  h2 { @apply text-xl font-semibold tracking-tight text-slate-900; }
+  h3 { @apply text-base font-semibold text-slate-900; }
+  a:hover { @apply no-underline; }
+
+  /* Champs de formulaire : un seul style pour toute l'application */
+  input:not([type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='color']),
+  select,
+  textarea {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs
+      placeholder:text-slate-400
+      focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/25
+      disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500;
+  }
+  input[type='checkbox'], input[type='radio'] { @apply size-4 cursor-pointer accent-brand-600; }
+  select.sm { @apply w-auto py-1.5 text-[13px]; }
+  .filters select, .filters input[type='date'], .hours-times input { @apply w-auto; }
+
+  /* Tableaux */
+  table { @apply w-full border-collapse text-sm; }
+  th { @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  td { @apply border-b-0 border-t border-slate-100 px-4 py-3 align-top text-slate-700; }
+  tbody tr:first-child > td { @apply border-t-0; }
+  tbody tr:hover > td { @apply bg-slate-50/60; }
+
+  /* Anciennes classes, restylées */
+  .btn { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 disabled:pointer-events-none disabled:opacity-50; filter: none; }
+  .btn.ghost { @apply border-0 bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50; }
+  .btn.danger { @apply bg-red-600 text-white hover:bg-red-700; }
+  .btn.sm { @apply px-2.5 py-1.5 text-[13px]; }
+
+  .card { @apply rounded-xl border-0 bg-white shadow-sm ring-1 ring-slate-200/70; }
+
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset; }
+  .badge.ok { @apply bg-emerald-50 text-emerald-700 ring-emerald-600/20; }
+  .badge.warn { @apply bg-amber-50 text-amber-800 ring-amber-600/25; }
+  .badge.bad { @apply bg-red-50 text-red-700 ring-red-600/20; }
+  .badge.info { @apply bg-sky-50 text-sky-700 ring-sky-600/20; }
+  .badge.teal { @apply bg-brand-50 text-brand-700 ring-brand-600/20; }
+  .badge.gold { @apply bg-gold-50 text-gold-800 ring-gold-500/30; }
+  .badge.muted { @apply bg-slate-100 text-slate-600 ring-slate-500/15; }
+
+  .alert { @apply rounded-lg px-4 py-3 text-sm ring-1 ring-inset; }
+  .alert.bad { @apply bg-red-50 text-red-800 ring-red-600/20; }
+  .alert.ok { @apply bg-emerald-50 text-emerald-800 ring-emerald-600/20; }
+  .alert.warn { @apply bg-amber-50 text-amber-900 ring-amber-600/25; }
+
+  .seg { @apply inline-flex rounded-lg border-0 bg-slate-100 p-0.5; }
+  .seg button { @apply cursor-pointer rounded-md bg-transparent px-3 py-1.5 text-[13px] font-medium text-slate-600 transition; }
+  .seg button.on { @apply bg-white text-slate-900 shadow-xs; }
+
+  .subtabs { @apply mb-5 flex gap-1 overflow-x-auto border-b border-slate-200; }
+  .subtab { @apply -mb-px flex cursor-pointer items-center gap-2 whitespace-nowrap border-0 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800; }
+  .subtab.active { @apply border-gold-500 text-brand-700; }
+
+  .modal-actions { @apply mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4; }
+  .form-section { @apply mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-slate-400; }
+}

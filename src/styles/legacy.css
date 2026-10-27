@@ -1,3 +1,5 @@
+
+@layer legacy {
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); }
 a { color: var(--brand); text-decoration: none; } a:hover { text-decoration: underline; }
@@ -359,4 +361,6 @@ table.matrix input[type=checkbox] { width: auto; }
   .live-layout { grid-template-columns: 1fr; height: auto; }
   .live-map { height: 55vh; }
   .live-side { overflow: visible; }
+}
+
 }

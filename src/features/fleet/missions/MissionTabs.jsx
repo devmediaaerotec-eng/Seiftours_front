@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
 import { CalendarDays, ClipboardCheck, List } from 'lucide-react';
+import { NavTabs } from '@/components/ui/Tabs';
 
 const TABS = [
   { to: '/fleet/missions', label: 'Programme de la semaine', icon: CalendarDays, end: true },
@@ -8,13 +8,5 @@ const TABS = [
 ];
 
 export default function MissionTabs() {
-  return (
-    <nav className="subtabs">
-      {TABS.map(({ to, label, icon: Icon, end }) => (
-        <NavLink key={to} to={to} end={end} className={({ isActive }) => `subtab ${isActive ? 'active' : ''}`}>
-          <Icon size={16} /> {label}
-        </NavLink>
-      ))}
-    </nav>
-  );
+  return <NavTabs items={TABS} />;
 }
