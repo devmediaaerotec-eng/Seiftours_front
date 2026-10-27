@@ -56,8 +56,7 @@ export default function LoginPage() {
             ))}
           </ul>
         </div>
-        <p className="relative text-sm text-brand-200">© {new Date().getFullYear()} Seif Tours · Accès réservé au personnel</p>
-      </aside>
+       </aside>
 
       <main className="flex items-center justify-center bg-slate-50 px-6 py-12">
         <div className="w-full max-w-sm">
