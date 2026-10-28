@@ -1,6 +1,11 @@
 import { Controller, useForm } from 'react-hook-form';
+import { Bus, Camera, FileText, Satellite, Tag, Users } from 'lucide-react';
+import Button from '@/components/ui/Button';
 import Field from '@/components/ui/Field';
+import { FormActions, FormGrid, FormSection } from '@/components/ui/FormParts';
 import ImageUpload from '@/components/ui/ImageUpload';
+import RadioCards from '@/components/ui/RadioCards';
+import Switch from '@/components/ui/Switch';
 import { useToast } from '@/components/ui/Toast';
 import { BUS_STATUS, BUS_TYPE } from '../shared/status';
 import { buses } from './resource';
@@ -35,7 +40,7 @@ export default function BusForm({ row, onDone, onCancel }) {
     const body = { ...v, seats: num(v.seats), year_made: num(v.year_made) };
     try {
       await save.mutateAsync({ id: row?.id, body });
-      toast.success('Enregistré.');
+      toast.success('Bus enregistré.');
       onDone();
     } catch (e) {
       if (e.status === 422 && e.data?.violations) {
@@ -49,73 +54,93 @@ export default function BusForm({ row, onDone, onCancel }) {
 
   return (
     <form onSubmit={submit} noValidate>
-      <div className="form-grid">
-        <div className="field span-2">
-          <span className="field-label">Type de bus *</span>
-          <div className="radio-row">
-            {Object.entries(BUS_TYPE).map(([k, t]) => (
-              <label key={k}><input type="radio" value={k} {...register('bus_type', { required: 'Choisissez un type' })} /> {t.label}</label>
-            ))}
+      <FormSection icon={Bus} title="Type de véhicule">
+        <RadioCards
+          name="bus_type"
+          register={register}
+          rules={{ required: 'Choisissez un type' }}
+          options={Object.entries(BUS_TYPE).map(([value, t]) => ({ value, label: t.label, icon: t.icon }))}
+        />
+        {errors.bus_type && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.bus_type.message}</p>}
+      </FormSection>
+
+      <FormSection icon={Tag} title="Identification">
+        <FormGrid>
+          <Field label="Code du bus *" error={errors.code} hint="Numéro de parc, ex. BUS-01 (mis en majuscules).">
+            <input autoFocus {...register('code', { required: 'Champ requis', maxLength: { value: 30, message: '30 caractères maximum' } })} />
+          </Field>
+          <Field label="Immatriculation *" error={errors.plate_number}>
+            <input placeholder="123 TUN 4567" {...register('plate_number', { required: 'Champ requis', maxLength: { value: 20, message: '20 caractères maximum' } })} />
+          </Field>
+          <Field label="Marque" error={errors.brand}><input {...register('brand')} /></Field>
+          <Field label="Modèle" error={errors.model}><input {...register('model')} /></Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection icon={Users} title="Capacité">
+        <FormGrid>
+          <Field label="Nombre de places *" error={errors.seats}>
+            <input inputMode="numeric" {...register('seats', {
+              required: 'Champ requis',
+              validate: (v) => (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 90) || 'Entre 1 et 90',
+            })} />
+          </Field>
+          <Field label="Année de mise en circulation" error={errors.year_made}>
+            <input inputMode="numeric" placeholder="2022" {...register('year_made', {
+              validate: (v) => v === '' || (/^\d{4}$/.test(v) && Number(v) >= 1980) || 'Année invalide',
+            })} />
+          </Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection icon={FileText} title="Documents" description="Une alerte vous prévient 30 jours avant chaque échéance.">
+        <FormGrid>
+          <Field label="Fin de l'assurance" error={errors.insurance_expires_on}>
+            <input type="date" {...register('insurance_expires_on')} />
+          </Field>
+          <Field label="Fin de la visite technique" error={errors.inspection_expires_on}>
+            <input type="date" {...register('inspection_expires_on')} />
+          </Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection icon={Satellite} title="Statut et suivi">
+        <FormGrid>
+          <Field label="Statut" error={errors.status} hint={onMission ? 'Géré par les missions tant que le bus est en mission.' : undefined}>
+            <select disabled={onMission} {...register('status')}>
+              {Object.entries(BUS_STATUS)
+                .filter(([k]) => k !== 'on_mission' || onMission)
+                .map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Boîtier GPS (identifiant)" error={errors.gps_device_id} hint="Laissez vide si le bus n'a pas de boîtier.">
+            <input {...register('gps_device_id')} />
+          </Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection icon={Camera} title="Photo et notes">
+        <div className="space-y-4">
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Photo du bus</span>
+            <Controller name="image_url" control={control}
+              render={({ field }) => <ImageUpload value={field.value} onChange={field.onChange} folder="buses" />} />
+            {errors.image_url && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.image_url.message}</p>}
           </div>
-          {errors.bus_type && <small className="field-error">{errors.bus_type.message}</small>}
+          <Field label="Notes internes" error={errors.notes}>
+            <textarea rows="3" {...register('notes')} />
+          </Field>
         </div>
+      </FormSection>
 
-        <Field label="Code du bus *" error={errors.code} hint="Numéro de parc, ex. BUS-01 (mis en majuscules).">
-          <input autoFocus {...register('code', { required: 'Champ requis', maxLength: { value: 30, message: '30 caractères maximum' } })} />
-        </Field>
-        <Field label="Immatriculation *" error={errors.plate_number}>
-          <input placeholder="123 TUN 4567" {...register('plate_number', { required: 'Champ requis', maxLength: { value: 20, message: '20 caractères maximum' } })} />
-        </Field>
-        <Field label="Marque" error={errors.brand}><input {...register('brand')} /></Field>
-        <Field label="Modèle" error={errors.model}><input {...register('model')} /></Field>
-        <Field label="Nombre de places *" error={errors.seats}>
-          <input inputMode="numeric" {...register('seats', {
-            required: 'Champ requis',
-            validate: (v) => (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 90) || 'Entre 1 et 90',
-          })} />
-        </Field>
-        <Field label="Année de mise en circulation" error={errors.year_made}>
-          <input inputMode="numeric" {...register('year_made', {
-            validate: (v) => v === '' || (/^\d{4}$/.test(v) && Number(v) >= 1980) || 'Année invalide',
-          })} />
-        </Field>
-        <Field label="Statut" error={errors.status} hint={onMission ? 'Géré par les missions tant que le bus est en mission.' : undefined}>
-          <select disabled={onMission} {...register('status')}>
-            {Object.entries(BUS_STATUS)
-              .filter(([k]) => k !== 'on_mission' || onMission)
-              .map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
-          </select>
-        </Field>
-        <Field label="Boîtier GPS (identifiant)" error={errors.gps_device_id} hint="Vide si le suivi se fait par l'application chauffeur.">
-          <input {...register('gps_device_id')} />
-        </Field>
-        <Field label="Fin de l'assurance" error={errors.insurance_expires_on}>
-          <input type="date" {...register('insurance_expires_on')} />
-        </Field>
-        <Field label="Fin de la visite technique" error={errors.inspection_expires_on}>
-          <input type="date" {...register('inspection_expires_on')} />
-        </Field>
-
-        <div className="field span-2">
-          <span className="field-label">Photo du bus</span>
-          <Controller name="image_url" control={control}
-            render={({ field }) => <ImageUpload value={field.value} onChange={field.onChange} folder="buses" />} />
-          {errors.image_url && <small className="field-error">{errors.image_url.message}</small>}
-        </div>
-
-        <Field label="Notes internes" className="span-2" error={errors.notes}>
-          <textarea rows="3" {...register('notes')} />
-        </Field>
-        <div className="field">
-          <label className="chk"><input type="checkbox" {...register('is_active')} /> Bus actif dans le parc</label>
-          <small className="muted">Archiver un bus libère son chauffeur attitré.</small>
-        </div>
+      <div className="mt-6 rounded-xl bg-slate-50 p-4">
+        <Switch label="Bus actif dans le parc" description="Archiver un bus libère son chauffeur attitré." {...register('is_active')} />
       </div>
 
-      <div className="modal-actions">
-        <button type="button" className="btn ghost" onClick={onCancel}>Annuler</button>
-        <button className="btn" disabled={save.isPending}>{save.isPending ? 'Enregistrement…' : 'Enregistrer'}</button>
-      </div>
+      <FormActions>
+        <Button variant="secondary" className="w-full sm:w-auto" onClick={onCancel}>Annuler</Button>
+        <Button type="submit" className="w-full sm:w-auto" loading={save.isPending}>Enregistrer</Button>
+      </FormActions>
     </form>
   );
 }

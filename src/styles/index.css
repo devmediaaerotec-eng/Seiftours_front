@@ -36,7 +36,8 @@
   --animate-pop: pop 0.18s ease-out;
   --animate-slide-up: slide-up 0.2s ease-out;
   --animate-slide-in: slide-in 0.2s ease-out;
-
+  --animate-sheet: sheet 0.22s ease-out;
+  @keyframes sheet { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: none; } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
   @keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -105,4 +106,5 @@
 
   .modal-actions { @apply mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4; }
   .form-section { @apply mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-slate-400; }
-}
+ }
+

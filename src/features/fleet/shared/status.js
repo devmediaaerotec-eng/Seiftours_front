@@ -1,21 +1,24 @@
-export const BUS_STATUS = {
-  available:      { label: 'Disponible',   cls: 'ok' },
-  on_mission:     { label: 'En mission',   cls: 'info' },
-  maintenance:    { label: 'Maintenance',  cls: 'warn' },
-  out_of_service: { label: 'Hors service', cls: 'bad' },
-};
+import {
+  Ban, Bus, BusFront, CalendarOff, CheckCircle2, Route, UserCheck, UserX, Wrench,
+} from 'lucide-react';
 
-export const DRIVER_STATUS = {
-  active:    { label: 'Actif',    cls: 'ok' },
-  on_leave:  { label: 'En congé', cls: 'warn' },
-  suspended: { label: 'Suspendu', cls: 'bad' },
+export const BUS_STATUS = {
+  available:      { label: 'Disponible',   cls: 'ok',   icon: CheckCircle2 },
+  on_mission:     { label: 'En mission',   cls: 'info', icon: Route },
+  maintenance:    { label: 'Maintenance',  cls: 'warn', icon: Wrench },
+  out_of_service: { label: 'Hors service', cls: 'bad',  icon: Ban },
 };
 
 export const BUS_TYPE = {
-  minibus:  { label: 'Minibus',  cls: 'teal' },
-  microbus: { label: 'Microbus', cls: 'gold' },
+  minibus:  { label: 'Minibus',  cls: 'teal', icon: Bus },
+  microbus: { label: 'Microbus', cls: 'gold', icon: BusFront },
 };
 
+export const DRIVER_STATUS = {
+  active:    { label: 'Actif',    cls: 'ok',   icon: UserCheck },
+  on_leave:  { label: 'En congé', cls: 'warn', icon: CalendarOff },
+  suspended: { label: 'Suspendu', cls: 'bad',  icon: UserX },
+};
 
 export const MISSION_STATUS = {
   planned:     { label: 'Planifiée',     cls: 'teal' },
