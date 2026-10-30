@@ -154,7 +154,7 @@ export default function DriversPage() {
     { key: 'status', label: 'Statut', render: (d) => (
       <div className="flex flex-col items-start gap-1.5">
         <DriverStatusBadge value={d.status} />
-        <Badge tone={d.has_pin ? 'ok' : 'muted'}><KeyRound className="size-3" />{d.has_pin ? 'Accès app' : "Pas d'accès"}</Badge>
+      
       </div>
     ) },
     { key: 'actions', label: '', className: 'w-12 text-right', render: (d) => menu(d) },

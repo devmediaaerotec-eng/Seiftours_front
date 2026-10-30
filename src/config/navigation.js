@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CalendarCheck, Plane, Route, Tag, MapPin,
-  Radar, Bus, UserRound,Compass, BellRing, Users, Settings,
+  Radar, Bus, UserRound,Compass, BellRing, Users, Settings,Inbox,
 } from 'lucide-react';
 
 export const NAV = [
@@ -22,6 +22,7 @@ export const NAV = [
     { label: 'Missions',        to: '/fleet/missions', icon: Route,     perm: 'fleet.read' },
     { label: 'Bus',             to: '/fleet/buses',    icon: Bus,       perm: 'fleet.read' },
     { label: 'Chauffeurs',      to: '/fleet/drivers',  icon: UserRound, perm: 'fleet.read' },
+    { label: 'Demandes de location', to: '/fleet/transport', icon: Inbox, perm: 'fleet.read' },
     { label: 'Alertes',         to: '/fleet/alerts',   icon: BellRing,  perm: 'alerts.read' },
   ]},
   { section: 'Administration', items: [

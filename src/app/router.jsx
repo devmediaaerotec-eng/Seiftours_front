@@ -29,6 +29,8 @@ const guard = (perm, element) => <RequirePermission perm={perm}>{element}</Requi
 const Alerts   = lazy(() => import('@/features/fleet/alerts/AlertsPage'));
 const Staff    = lazy(() => import('@/features/staff/StaffPage'));
 const Settings = lazy(() => import('@/features/settings/SettingsPage'));
+const TransportRequests = lazy(() => import('@/features/fleet/transport/TransportRequestsPage'));
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   {
@@ -61,7 +63,7 @@ export const router = createBrowserRouter([
 { path: 'fleet/alerts', element: guard('alerts.read', <Alerts />) },
 { path: 'staff',        element: guard('staff.manage', <Staff />) },
 { path: 'settings',     element: guard('settings.manage', <Settings />) },
-
+ { path: 'fleet/transport', element: guard('fleet.read', <TransportRequests />) },
 ],
   },
 ]);

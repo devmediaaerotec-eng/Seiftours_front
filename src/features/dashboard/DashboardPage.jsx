@@ -139,7 +139,8 @@ export default function DashboardPage() {
     kpis.push({ icon: Wallet, label: 'Encaissé ce mois', value: money(b.cash_month), tone: 'ok', delta: b.cash_delta_pct,
       sub: 'vs même période du mois dernier' });
   }
-  if (f) {
+  if 
+  (f) {
     kpis.push({ icon: Bus, label: "Missions aujourd'hui", value: f.today.total, tone: 'brand',
       sub: `${f.today.to_control} à contrôler · ${f.buses.available} bus libres`, to: '/fleet/missions/control' });
   }
@@ -241,26 +242,7 @@ export default function DashboardPage() {
                 </Panel>
               )}
 
-              {tr && (
-                <Panel title="Prochains départs" icon={Plane} action={<MoreLink to="/trips">Voyages</MoreLink>}>
-                  {tr.upcoming.length === 0 ? <p className="text-sm text-slate-500">Aucun départ programmé : pensez à en ajouter.</p> : (
-                    <ul className="divide-y divide-slate-100">
-                      {tr.upcoming.map((d) => (
-                        <li key={d.id} className="flex items-center gap-4 py-2.5">
-                          <span className="w-24 text-sm font-semibold text-brand-700">{fmtDate(d.departure_date)}</span>
-                          <span className="min-w-0 flex-1">
-                            <Link to={`/trips/${d.trip_id}`} className="block truncate text-sm font-medium">{d.title}</Link>
-                            <span className="text-xs text-slate-500">{money(d.price_per_person_millimes)} / pers.</span>
-                          </span>
-                          {d.seats_left != null && (
-                            <Badge tone={d.seats_left <= 5 ? 'warn' : 'ok'}>{d.seats_left === 0 ? 'Complet' : `${d.seats_left} place(s)`}</Badge>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </Panel>
-              )}
+        
             </div>
 
             <div className="min-w-0 space-y-6">
@@ -333,19 +315,7 @@ export default function DashboardPage() {
                   )}
                 </Panel>
               )}
-
-              {data.activity?.length > 0 && (
-                <Panel title="Activité récente" icon={History}>
-                  <ul className="space-y-3">
-                    {data.activity.map((a, i) => (
-                      <li key={i} className="text-sm text-slate-700">
-                        {activityText(a)}{a.label ? <> : <strong className="font-semibold text-slate-900">{a.label}</strong></> : null}
-                        <span className="block text-xs text-slate-400">{a.staff_name || 'Système'} · {timeAgo(a.created_at)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Panel>
-              )}
+ 
             </div>
           </div>
         </>

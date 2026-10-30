@@ -1,58 +1,101 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Plus, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  BellRing, Bus, CheckCircle2, Hand, Info, MapPin, Plus, RefreshCw, RotateCcw, ShieldAlert, ShieldCheck, TriangleAlert,
+  UserRound, ClipboardList,
+} from 'lucide-react';
+import Alert from '@/components/ui/Alert';
+import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
 import Field from '@/components/ui/Field';
+import { FilterBar, SearchBox } from '@/components/ui/Filters';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
 import Pagination from '@/components/ui/Pagination';
+import RadioCards from '@/components/ui/RadioCards';
+import Segmented from '@/components/ui/Segmented';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { cn } from '@/lib/cn';
+import { errText } from '@/lib/errors';
 import { fmtDateTime, timeAgo } from '@/lib/format';
 import { useMissionOptions } from '../missions/resource';
 import { ALERT_TYPE, SEVERITY } from '../shared/alerts';
 import StatCards from '../shared/StatCards';
 import { alerts, useAlertAction, useCreateAlert, useOpenAlertsCount, useRunChecks } from './hooks';
 
+const SEV_STYLE = {
+  critical: { border: 'border-l-red-500', icon: 'bg-red-50 text-red-600' },
+  warning: { border: 'border-l-amber-500', icon: 'bg-amber-50 text-amber-600' },
+  info: { border: 'border-l-sky-500', icon: 'bg-sky-50 text-sky-600' },
+};
+
+const Chip = ({ icon: Icon, children }) => (
+  <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
+    <Icon className="size-3.5 text-slate-400" /> {children}
+  </span>
+);
+
 function AlertCard({ a, canManage, busy, onAck, onResolve, onReopen }) {
   const t = ALERT_TYPE[a.type] ?? ALERT_TYPE.incident;
   const s = SEVERITY[a.severity];
+  const st = SEV_STYLE[a.severity] ?? SEV_STYLE.info;
   const Icon = t.icon;
+
   return (
-    <div className={`alert-card sev-${a.severity} ${a.status === 'resolved' ? 'done' : ''}`}>
-      <div className="alert-ico"><Icon size={20} /></div>
-      <div className="alert-main">
-        <div className="alert-top">
-          <span className={`badge ${s.cls}`}>{s.label}</span>
-          <span className="badge muted">{t.label}</span>
-          {a.source === 'manual' && <span className="badge teal">Signalé</span>}
-          <small className="muted">{timeAgo(a.created_at)}</small>
+    <article className={cn('flex flex-col gap-4 rounded-xl border-l-4 bg-white p-4 shadow-sm ring-1 ring-slate-200/70 sm:flex-row sm:items-start sm:p-5', st.border, a.status === 'resolved' && 'opacity-75')}>
+      <div className="flex items-start gap-3 sm:contents">
+        <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', st.icon)}><Icon className="size-5" /></span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={s.cls}>{s.label}</Badge>
+            <Badge>{t.label}</Badge>
+            {a.source === 'manual' && <Badge tone="teal">Signalé</Badge>}
+            {a.status === 'acknowledged' && <Badge tone="info"><Hand className="size-3" />Pris en charge</Badge>}
+            <span className="text-xs text-slate-400">{timeAgo(a.created_at)}</span>
+          </div>
+
+          <p className="mt-2 text-[15px] font-medium leading-snug text-slate-900">{a.message}</p>
+
+          {(a.bus_code || a.driver_name || a.mission_reference || a.lat != null) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {a.bus_code && <Chip icon={Bus}>Bus {a.bus_code}</Chip>}
+              {a.driver_name && <Chip icon={UserRound}>{a.driver_name}</Chip>}
+              {a.mission_reference && <Chip icon={ClipboardList}>Mission {a.mission_reference}</Chip>}
+              {a.lat != null && (
+                <a href={`https://www.google.com/maps?q=${a.lat},${a.lng}`} target="_blank" rel="noopener noreferrer"
+                   className="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100">
+                  <MapPin className="size-3.5" /> Voir sur la carte
+                </a>
+              )}
+            </div>
+          )}
+
+          {a.status === 'acknowledged' && (
+            <p className="mt-3 text-xs text-slate-500">Pris en charge par {a.acknowledged_by_name || '—'} · {fmtDateTime(a.acknowledged_at)}</p>
+          )}
+          {a.status === 'resolved' && (
+            <p className="mt-3 text-xs text-slate-500">
+              Résolue {a.resolved_by_name ? `par ${a.resolved_by_name}` : 'automatiquement'} · {fmtDateTime(a.resolved_at)}
+              {a.resolution_note ? <span className="block italic">« {a.resolution_note} »</span> : null}
+            </p>
+          )}
         </div>
-        <div className="alert-msg">{a.message}</div>
-        <div className="alert-meta">
-          {a.bus_code && <span>Bus {a.bus_code}</span>}
-          {a.driver_name && <span>{a.driver_name}</span>}
-          {a.mission_reference && <span>Mission {a.mission_reference}</span>}
-          {a.lat != null && <a href={`https://www.google.com/maps?q=${a.lat},${a.lng}`} target="_blank" rel="noopener noreferrer">Voir sur la carte</a>}
-        </div>
-        {a.status === 'acknowledged' && (
-          <small className="muted">Prise en charge par {a.acknowledged_by_name || '—'} · {fmtDateTime(a.acknowledged_at)}</small>
-        )}
-        {a.status === 'resolved' && (
-          <small className="muted">
-            Résolue {a.resolved_by_name ? `par ${a.resolved_by_name}` : 'automatiquement'} · {fmtDateTime(a.resolved_at)}
-            {a.resolution_note ? ` — « ${a.resolution_note} »` : ''}
-          </small>
-        )}
       </div>
+
       {canManage && (
-        <div className="alert-actions">
-          {a.status === 'open' && <button className="btn ghost sm" disabled={busy} onClick={onAck}>Prendre en charge</button>}
-          {a.status !== 'resolved' && <button className="btn sm" disabled={busy} onClick={onResolve}>Résoudre</button>}
-          {a.status === 'resolved' && <button className="btn ghost sm" disabled={busy} onClick={onReopen}>Rouvrir</button>}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:w-44 sm:shrink-0 sm:flex-col">
+          {a.status === 'open' && <Button variant="secondary" size="sm" icon={Hand} className="w-full" disabled={busy} onClick={onAck}>Prendre en charge</Button>}
+          {a.status !== 'resolved' && <Button size="sm" icon={CheckCircle2} className="w-full" disabled={busy} onClick={onResolve}>Résoudre</Button>}
+          {a.status === 'resolved' && <Button variant="secondary" size="sm" icon={RotateCcw} className="w-full" disabled={busy} onClick={onReopen}>Rouvrir</Button>}
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -60,23 +103,26 @@ function ResolveModal({ alert, onClose }) {
   const toast = useToast();
   const act = useAlertAction();
   const { register, handleSubmit, formState: { errors } } = useForm({ defaultValues: { note: '' } });
+
   const submit = handleSubmit(async ({ note }) => {
     try {
       await act.mutateAsync({ id: alert.id, action: 'resolve', note: note.trim() });
       toast.success('Alerte résolue.');
       onClose();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) { toast.error(errText(e)); }
   });
+
   return (
-    <Modal title="Résoudre l'alerte" onClose={onClose}>
-      <p style={{ marginTop: 0 }}>{alert.message}</p>
-      <form onSubmit={submit} noValidate>
-        <Field label="Remarque (optionnelle)" error={errors.note}>
-          <textarea rows="3" placeholder="Ex. Assurance renouvelée le 12/11, attestation classée." {...register('note', { maxLength: { value: 1000, message: '1000 caractères maximum' } })} />
+    <Modal title="Résoudre l'alerte" size="sm" onClose={onClose}>
+      <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{alert.message}</p>
+      <form onSubmit={submit} noValidate className="mt-4">
+        <Field label="Remarque (optionnelle)" error={errors.note} hint="Gardez une trace de ce qui a été fait.">
+          <textarea rows="3" placeholder="Ex. Assurance renouvelée le 12/11, attestation classée."
+                    {...register('note', { maxLength: { value: 1000, message: '1000 caractères maximum' } })} />
         </Field>
-        <div className="modal-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>Annuler</button>
-          <button className="btn" disabled={act.isPending}>Marquer comme résolue</button>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={onClose}>Annuler</Button>
+          <Button type="submit" icon={CheckCircle2} className="w-full sm:w-auto" loading={act.isPending}>Marquer comme résolue</Button>
         </div>
       </form>
     </Modal>
@@ -87,9 +133,11 @@ function IncidentModal({ onClose }) {
   const toast = useToast();
   const create = useCreateAlert();
   const options = useMissionOptions();
-  const { register, handleSubmit, setError, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setError, formState: { errors } } = useForm({
     defaultValues: { severity: 'warning', message: '', bus_id: '', driver_id: '' },
   });
+  const message = watch('message') ?? '';
+
   const submit = handleSubmit(async (v) => {
     try {
       await create.mutateAsync({
@@ -101,19 +149,31 @@ function IncidentModal({ onClose }) {
     } catch (e) {
       if (e.status === 422 && e.data?.violations) {
         Object.entries(e.data.violations).forEach(([k, m]) => setError(k, { type: 'server', message: m }));
-      } else toast.error(e.message);
+      } else toast.error(errText(e));
     }
   });
+
   return (
     <Modal title="Signaler un incident" onClose={onClose}>
-      <form onSubmit={submit} noValidate>
-        <div className="form-grid">
-          <Field label="Gravité" error={errors.severity}>
-            <select {...register('severity')}>
-              {Object.entries(SEVERITY).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
-            </select>
-          </Field>
-          <span />
+      <div className="mb-5 flex gap-3 rounded-lg bg-brand-50 p-3 text-xs leading-relaxed text-brand-900">
+        <Info className="mt-0.5 size-4 shrink-0 text-brand-600" />
+        <p>
+          Un incident est une alerte créée <strong>à la main</strong> pour garder une trace d'un événement que le système ne détecte pas
+          (panne signalée par téléphone, chauffeur absent, plainte d'un client…). Il reste ouvert jusqu'à ce que quelqu'un le résolve.
+        </p>
+      </div>
+
+      <form onSubmit={submit} noValidate className="space-y-5">
+        <div>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">Gravité</span>
+          <RadioCards name="severity" register={register} className="grid-cols-1 sm:grid-cols-3" options={[
+            { value: 'critical', label: 'Critique', icon: ShieldAlert, description: 'Accident, panne avec passagers à bord' },
+            { value: 'warning', label: 'Attention', icon: TriangleAlert, description: 'Chauffeur absent, bus immobilisé' },
+            { value: 'info', label: 'Info', icon: Info, description: 'Petit incident, simple trace' },
+          ]} />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Bus concerné" error={errors.bus_id}>
             <select {...register('bus_id')}>
               <option value="">Aucun</option>
@@ -126,16 +186,16 @@ function IncidentModal({ onClose }) {
               {(options.data?.drivers ?? []).map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
             </select>
           </Field>
-          <Field label="Description *" className="span-2" error={errors.message} hint="Ex. Panne de climatisation signalée par le chauffeur à 14 h.">
-            <textarea rows="3" {...register('message', {
-              required: 'Décrivez la situation',
-              maxLength: { value: 255, message: '255 caractères maximum' },
-            })} />
-          </Field>
         </div>
-        <div className="modal-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>Annuler</button>
-          <button className="btn" disabled={create.isPending}>Signaler</button>
+
+        <Field label="Description *" error={errors.message}
+               hint={<span className={message.length > 255 ? 'font-medium text-red-600' : ''}>{message.length}/255 · Ex. Panne de climatisation signalée par le chauffeur à 14 h.</span>}>
+          <textarea rows="3" {...register('message', { required: 'Décrivez la situation', maxLength: { value: 255, message: '255 caractères maximum' } })} />
+        </Field>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={onClose}>Annuler</Button>
+          <Button type="submit" icon={Plus} className="w-full sm:w-auto" loading={create.isPending}>Signaler</Button>
         </div>
       </form>
     </Modal>
@@ -144,6 +204,7 @@ function IncidentModal({ onClose }) {
 
 export default function AlertsPage() {
   const toast = useToast();
+  const qc = useQueryClient();
   const { can } = useAuth();
   const canManage = can('alerts.manage');
   const [params, setParams] = useSearchParams();
@@ -161,6 +222,12 @@ export default function AlertsPage() {
   const act = useAlertAction();
   const run = useRunChecks();
 
+  // La liste se rafraîchit toute seule toutes les 30 secondes
+  useEffect(() => {
+    const t = setInterval(() => qc.invalidateQueries({ queryKey: alerts.keys.all }), 30_000);
+    return () => clearInterval(t);
+  }, [qc]);
+
   const update = (patch) => {
     const next = new URLSearchParams(params);
     Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
@@ -168,61 +235,67 @@ export default function AlertsPage() {
   };
 
   const doAct = (a, action, msg) =>
-    act.mutate({ id: a.id, action }, { onSuccess: () => toast.success(msg), onError: (e) => toast.error(e.message) });
+    act.mutate({ id: a.id, action }, { onSuccess: () => toast.success(msg), onError: (e) => toast.error(errText(e)) });
 
   const check = () =>
     run.mutate(undefined, {
-      onSuccess: (r) => (r.busy ? toast.warn('Une vérification est déjà en cours.')
+      onSuccess: (r) => (r.busy
+        ? toast.warn('Une vérification est déjà en cours.')
         : toast.success(`Vérification terminée : ${r.created} nouvelle(s), ${r.resolved} résolue(s).`)),
-      onError: (e) => toast.error(e.message),
+      onError: (e) => toast.error(errText(e)),
     });
 
   const c = count.data;
+  const items = data?.items ?? [];
 
   return (
     <>
-      <PageHeader title="Alertes" action={canManage && (
-        <div className="row-tools">
-          <button className="btn ghost" disabled={run.isPending} onClick={check}><RefreshCw size={16} className={run.isPending ? 'spin' : ''} /> Vérifier maintenant</button>
-          <button className="btn" onClick={() => setCreating(true)}><Plus size={16} /> Signaler un incident</button>
-        </div>
-      )} />
+      <PageHeader
+        title="Alertes"
+        description="Situations à surveiller : documents, contrôles, programmes non envoyés, incidents signalés."
+        action={canManage && (
+          <>
+            <Button variant="secondary" icon={RefreshCw} loading={run.isPending} onClick={check}>Vérifier maintenant</Button>
+            <Button icon={Plus} onClick={() => setCreating(true)}>Signaler un incident</Button>
+          </>
+        )}
+      />
 
       <StatCards items={[
-        { label: 'À traiter', value: c?.open, tone: c?.open ? 'warn' : '', active: status === 'open', onClick: () => update({ status: 'open', page: '' }) },
-        { label: 'Prises en charge', value: c?.acknowledged, active: status === 'acknowledged', onClick: () => update({ status: 'acknowledged', page: '' }) },
-        { label: 'Critiques en cours', value: c?.critical, tone: c?.critical ? 'bad' : '', active: severity === 'critical', onClick: () => update({ severity: 'critical', status: 'active', page: '' }) },
-        { label: 'Résolues (7 jours)', value: c?.resolved_week, active: status === 'resolved', onClick: () => update({ status: 'resolved', page: '' }) },
+        { label: 'À traiter', value: c?.open, icon: BellRing, tone: c?.open ? 'warn' : undefined, active: status === 'open', onClick: () => update({ status: 'open', page: '' }) },
+        { label: 'Prises en charge', value: c?.acknowledged, icon: Hand, active: status === 'acknowledged', onClick: () => update({ status: 'acknowledged', page: '' }) },
+        { label: 'Critiques en cours', value: c?.critical, icon: ShieldAlert, tone: c?.critical ? 'bad' : undefined, active: severity === 'critical', onClick: () => update({ severity: 'critical', status: 'active', page: '' }) },
+        { label: 'Résolues (7 jours)', value: c?.resolved_week, icon: CheckCircle2, tone: 'ok', active: status === 'resolved', onClick: () => update({ status: 'resolved', page: '' }) },
       ]} />
 
-      <div className="filters wrap">
-        <div className="seg">
-          {[['active', 'Actives'], ['resolved', 'Résolues'], ['all', 'Toutes']].map(([k, label]) => (
-            <button key={k} className={status === k ? 'on' : ''} onClick={() => update({ status: k === 'active' ? '' : k, page: '' })}>{label}</button>
-          ))}
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); update({ q: search.trim(), page: '' }); }}>
-          <input placeholder="Message, bus, chauffeur…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <button className="btn">Rechercher</button>
-        </form>
-        <select value={severity} onChange={(e) => update({ severity: e.target.value, page: '' })}>
+      <FilterBar>
+        <Segmented value={status} onChange={(v) => update({ status: v === 'active' ? '' : v, page: '' })}
+                   options={[['active', 'Actives'], ['resolved', 'Résolues'], ['all', 'Toutes']]} />
+        <SearchBox value={search} onChange={setSearch} onSubmit={() => update({ q: search.trim(), page: '' })} placeholder="Message, bus, chauffeur…" />
+        <select className="w-full sm:w-auto sm:min-w-44" value={severity} onChange={(e) => update({ severity: e.target.value, page: '' })}>
           <option value="">Toutes les gravités</option>
           {Object.entries(SEVERITY).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
         </select>
-        <select value={type} onChange={(e) => update({ type: e.target.value, page: '' })}>
+        <select className="w-full sm:w-auto sm:min-w-44" value={type} onChange={(e) => update({ type: e.target.value, page: '' })}>
           <option value="">Tous les types</option>
           {Object.entries(ALERT_TYPE).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
         </select>
-      </div>
+      </FilterBar>
 
-      {error && <div className="alert bad">{error.message}</div>}
-      {isLoading && <div className="center">Chargement…</div>}
-      {!isLoading && (data?.items ?? []).length === 0 && (
-        <div className="card center muted">Aucune alerte {status === 'active' ? 'en cours. Tout est en ordre.' : 'pour ces critères.'}</div>
+      {error && <Alert tone="bad">{error.message}</Alert>}
+      {isLoading && items.length === 0 && (
+        <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-200/60" />)}</div>
       )}
 
-      <div className="alert-list">
-        {(data?.items ?? []).map((a) => (
+      {!isLoading && items.length === 0 && (
+        <Card padded={false}>
+          <EmptyState icon={ShieldCheck} title={status === 'active' && !severity && !type && !q ? 'Aucune alerte en cours' : 'Aucune alerte pour ces critères'}
+                      text={status === 'active' && !severity && !type && !q ? 'Tout est en ordre. Cette page se met à jour automatiquement.' : 'Modifiez vos filtres pour élargir la recherche.'} />
+        </Card>
+      )}
+
+      <div className="space-y-3">
+        {items.map((a) => (
           <AlertCard key={a.id} a={a} canManage={canManage} busy={act.isPending}
                      onAck={() => doAct(a, 'acknowledge', 'Alerte prise en charge.')}
                      onResolve={() => setResolving(a)}

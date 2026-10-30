@@ -60,14 +60,12 @@ export default function BusCard({ b, menu, onEdit }) {
               <Avatar src={b.driver_photo} name={b.driver_name} size={34} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-slate-900">{b.driver_name}</p>
-                <p className="text-xs text-slate-500">Chauffeur attitré</p>
-              </div>
+               </div>
             </>
           ) : (
             <>
               <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-400"><UserRound className="size-4" /></span>
-              <p className="text-sm text-slate-500">Aucun chauffeur attitré</p>
-            </>
+             </>
           )}
         </div>
 
