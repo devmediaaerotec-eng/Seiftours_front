@@ -4,7 +4,6 @@ import AppShell from '@/components/layout/AppShell';
 import ProtectedRoute from '@/features/auth/ProtectedRoute';
 import RequirePermission from '@/features/auth/RequirePermission';
 import LoginPage from '@/features/auth/LoginPage';
-
 const Trips = lazy(() => import("@/features/Trips/pages/TripsPage"));
 
 const TripEditPage = lazy(() =>
@@ -29,6 +28,7 @@ const guard = (perm, element) => <RequirePermission perm={perm}>{element}</Requi
 const Alerts   = lazy(() => import('@/features/fleet/alerts/AlertsPage'));
 const Staff    = lazy(() => import('@/features/staff/StaffPage'));
 const Settings = lazy(() => import('@/features/settings/SettingsPage'));
+const TripRequests = lazy(() => import('@/features/trip-requests/pages/TripRequestsPage'));
 const TransportRequests = lazy(() => import('@/features/fleet/transport/TransportRequestsPage'));
 
 export const router = createBrowserRouter([
@@ -46,7 +46,6 @@ export const router = createBrowserRouter([
 { path: 'circuits/new',   element: guard('trips.manage', <TripEditPage scope="circuits" />) },
 { path: 'circuits/:id',   element: guard('trips.manage', <TripEditPage scope="circuits" />) },
       { path: 'fleet/live',    element: guard('fleet.track', <LiveMap />) },
-      { path: '*',             element: <div className="center">Page introuvable.</div> },
     { path: 'destinations',     element: guard('destinations.manage', <Destinations />) },
 { path: 'regions',          element: guard('destinations.manage', <Regions />) },
 { path: 'deals',            element: guard('deals.manage', <Deals />) },
@@ -64,6 +63,10 @@ export const router = createBrowserRouter([
 { path: 'staff',        element: guard('staff.manage', <Staff />) },
 { path: 'settings',     element: guard('settings.manage', <Settings />) },
  { path: 'fleet/transport', element: guard('fleet.read', <TransportRequests />) },
+
+ { path: 'trip-requests', element: guard('trips.manage', <TripRequests />) },
+      { path: '*', element: <div className="center">Page introuvable.</div> },
+
 ],
   },
 ]);
