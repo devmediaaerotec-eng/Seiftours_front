@@ -28,6 +28,7 @@ const guard = (perm, element) => <RequirePermission perm={perm}>{element}</Requi
 const Alerts   = lazy(() => import('@/features/fleet/alerts/AlertsPage'));
 const Staff    = lazy(() => import('@/features/staff/StaffPage'));
 const Settings = lazy(() => import('@/features/settings/SettingsPage'));
+const SupplierPayments = lazy(() => import('@/features/supplier-payments/pages/SupplierPaymentsPage'));
 const TripRequests = lazy(() => import('@/features/trip-requests/pages/TripRequestsPage'));
 const TransportRequests = lazy(() => import('@/features/fleet/transport/TransportRequestsPage'));
 
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
 { path: 'settings',     element: guard('settings.manage', <Settings />) },
  { path: 'fleet/transport', element: guard('fleet.read', <TransportRequests />) },
 
+ { path: 'supplier-payments', element: guard('supplier_payments.read', <SupplierPayments />) },
  { path: 'trip-requests', element: guard('trips.manage', <TripRequests />) },
       { path: '*', element: <div className="center">Page introuvable.</div> },
 

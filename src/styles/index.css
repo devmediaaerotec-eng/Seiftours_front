@@ -43,7 +43,28 @@
   @keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   @keyframes slide-in { from { transform: translateX(-100%); } to { transform: none; } }
 }
+/* Scrollbar fine : invisible au repos, visible au survol */
+.scroll-thin {
+  scrollbar-width: thin;                         /* Firefox, Chrome 121+, Safari 18.2+ */
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+}
+.scroll-thin:hover,
+.scroll-thin:focus-within {
+  scrollbar-color: rgb(148 163 184 / 0.55) transparent; /* slate-400 */
+}
 
+/* Anciens navigateurs WebKit */
+@supports not (scrollbar-width: thin) {
+  .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+  .scroll-thin:hover::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.55); }
+  .scroll-thin::-webkit-scrollbar-thumb:hover { background: rgb(100 116 139 / 0.8); }
+}
 /* ------------------------------------------------------------------------------------
    Compatibilité : restyle l'ancien CSS (couche "legacy") avec le nouveau design.
    À SUPPRIMER avec legacy.css quand plus aucune page n'utilise ces classes.
