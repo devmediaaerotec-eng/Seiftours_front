@@ -76,7 +76,7 @@ export default function DealsPage() {
             { key: 'title', label: 'Offre', render: (r) => (
               <>
                 <Link to={`/deals/${r.id}`}>{r.title}</Link><br />
-                <small className="muted">{r.category_name} · {r.trip_title || r.hotel_name || '—'}</small>
+                <small className="muted">{r.category_name} · {r.trip_title || r.hotel_name || 'Offre libre'}</small>
               </>
             ) },
             { key: 'price', label: 'Prix', render: (r) => (

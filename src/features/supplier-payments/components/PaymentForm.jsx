@@ -90,6 +90,7 @@ export default function PaymentForm({ payment, meta, defaults, onClose, onSaved 
         </header>
 
         <div className="sp-body">
+          <div className="sp-col sp-col-a">
           <Slip f={f} />
 
           <div>
@@ -106,6 +107,28 @@ export default function PaymentForm({ payment, meta, defaults, onClose, onSaved 
             </div>
           </div>
 
+          {(f.method === 'transfer' || f.method === 'cheque') && (
+            <div className="sp-two">
+              <Field id="sp-bank" label="Banque">
+                <input id="sp-bank" list="sp-banks" value={f.bank} onChange={set('bank')} autoComplete="off" />
+                <datalist id="sp-banks">{meta.banks.map((b) => <option key={b} value={b} />)}</datalist>
+              </Field>
+              <Field id="sp-st" label="Statut">
+                <select id="sp-st" value={f.status} onChange={set('status')}>
+                  <option value="cleared">{f.method === 'cheque' ? 'Encaissé' : 'Réglé'}</option>
+                  <option value="pending">En attente</option>
+                  {editing && <option value="cancelled">Annulé</option>}
+                </select>
+              </Field>
+            </div>
+          )}
+
+          <Field id="sp-notes" label="Remarque interne">
+            <textarea id="sp-notes" rows={2} value={f.notes} onChange={set('notes')} />
+          </Field>
+
+          </div>
+          <div className="sp-col sp-col-b">
           <div className="sp-two">
             <Field id="sp-date" label="Date *" error={errors.paid_on}>
               <input id="sp-date" type="date" value={f.paid_on} onChange={set('paid_on')} />
@@ -135,26 +158,6 @@ export default function PaymentForm({ payment, meta, defaults, onClose, onSaved 
             <InvoiceInput value={f.sales_invoices} onChange={(v) => setF((s) => ({ ...s, sales_invoices: v }))} />
           </Field>
 
-          {(f.method === 'transfer' || f.method === 'cheque') && (
-            <div className="sp-two">
-              <Field id="sp-bank" label="Banque">
-                <input id="sp-bank" list="sp-banks" value={f.bank} onChange={set('bank')} autoComplete="off" />
-                <datalist id="sp-banks">{meta.banks.map((b) => <option key={b} value={b} />)}</datalist>
-              </Field>
-              <Field id="sp-st" label="Statut">
-                <select id="sp-st" value={f.status} onChange={set('status')}>
-                  <option value="cleared">{f.method === 'cheque' ? 'Encaissé' : 'Réglé'}</option>
-                  <option value="pending">En attente</option>
-                  {editing && <option value="cancelled">Annulé</option>}
-                </select>
-              </Field>
-            </div>
-          )}
-
-          <Field id="sp-notes" label="Remarque interne">
-            <textarea id="sp-notes" rows={2} value={f.notes} onChange={set('notes')} />
-          </Field>
-
           {duplicate && (
             <div className="alert bad" role="alert">
               {duplicate}
@@ -162,6 +165,7 @@ export default function PaymentForm({ payment, meta, defaults, onClose, onSaved 
             </div>
           )}
           {formError && !duplicate && <div className="alert bad" role="alert">{formError}</div>}
+          </div>
         </div>
 
         <div className="sp-foot">

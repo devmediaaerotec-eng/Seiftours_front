@@ -64,10 +64,11 @@ export default function DealForm({ defaultValues, options, saving, onSubmit, ext
       </div>
 
       <div className="card">
-        <h3>Offre sur…</h3>
+        <h3>Type d'offre</h3>
         <div className="radio-row">
           <label><input type="radio" value="trip" {...register('target')} /> Un voyage / circuit</label>
           <label><input type="radio" value="hotel" {...register('target')} /> Un hôtel</label>
+          <label><input type="radio" value="custom" {...register('target')} /> Autre offre (libre)</label>
         </div>
         {errors.target && <small className="field-error">{errors.target.message}</small>}
 
@@ -80,7 +81,7 @@ export default function DealForm({ defaultValues, options, saving, onSubmit, ext
               ))}
             </select>
           </Field>
-        ) : (
+        ) : target === 'hotel' ? (
           <div className="field">
             <span className="field-label">Hôtel *</span>
             <HotelPicker
@@ -97,6 +98,11 @@ export default function DealForm({ defaultValues, options, saving, onSubmit, ext
               }}
             />
           </div>
+        ) : (
+          <Field label="Lien du bouton (facultatif)" error={errors.link_url}
+            hint="Ex. https://… ou /contact. Vide : le bouton ouvre le formulaire de contact avec un message prérempli.">
+            <input inputMode="url" placeholder="https://" {...register('link_url')} />
+          </Field>
         )}
       </div>
 

@@ -1,4 +1,3 @@
-
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { BellRing, ChevronDown, KeyRound, LogOut, Menu, X } from 'lucide-react';
@@ -16,22 +15,49 @@ const ROLE_LABELS = {
   fleet_manager: 'Responsable flotte', dispatcher: 'Dispatcher', secretary: 'Secrétaire',
 };
 
-function SidebarContent({ sections, badges, onNavigate }) {
+// ---------------------------------------------------------------
+// SidebarContent — reçoit `collapsed` (desktop) et `onClose` (mobile)
+// ---------------------------------------------------------------
+function SidebarContent({
+  sections, badges, onNavigate, onClose, closeBtnRef,
+  collapsed = false,
+}) {
   return (
     <div className="flex h-full flex-col">
-      <Link
-        to="/"
-        onClick={onNavigate}
-        aria-label="Seif Tours, accueil"
-        className="flex h-16 shrink-0 items-center justify-center border-b border-slate-100 px-5"
-      >
-        <img src={logo} alt="" className="h-10 w-auto" />
-      </Link>
+    
+    <div className="relative flex h-16 shrink-0 items-center justify-center border-b border-slate-100 px-3">
+  <Link
+    to="/"
+    onClick={onNavigate}
+    aria-label="Seif Tours, accueil"
+    className={cn('flex items-center', collapsed && 'hidden')}
+  >
+    <img src={logo} alt="" className="h-10 w-auto" />
+  </Link>
 
-      <nav className="scroll-thin flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="Navigation principale">
+  {onClose && (
+    <button
+      ref={closeBtnRef}
+      type="button"
+      onClick={onClose}
+      aria-label={collapsed ? 'Ouvrir le menu' : 'Fermer le menu'}
+      className={cn(
+        'absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-slate-400 outline-none transition hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-500/50',
+        collapsed ? 'left-1/2 -translate-x-1/2' : 'right-3'
+      )}
+    >
+      <X className="size-5" />
+    </button>
+  )}
+</div>
+
+      <nav
+        className="scroll-thin flex-1 space-y-6 overflow-y-auto px-3 py-5"
+        aria-label="Navigation principale"
+      >
         {sections.map((s, i) => (
           <div key={i}>
-            {s.section && (
+            {s.section && !collapsed && (
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 {s.section}
               </p>
@@ -43,9 +69,11 @@ function SidebarContent({ sections, badges, onNavigate }) {
                     to={to}
                     end={end}
                     onClick={onNavigate}
+                    title={collapsed ? label : undefined}
                     className={({ isActive }) => cn(
                       'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors',
                       'focus-visible:ring-2 focus-visible:ring-brand-500/50',
+                      collapsed && 'justify-center px-2',
                       isActive
                         ? 'bg-brand-50 text-brand-700'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -66,11 +94,18 @@ function SidebarContent({ sections, badges, onNavigate }) {
                             isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600'
                           )}
                         />
-                        <span className="flex-1 truncate">{label}</span>
-                        {badges[to] > 0 && (
-                          <span className="min-w-[20px] rounded-full bg-orange-500 px-1.5 py-0.5 text-center text-[11px] font-semibold leading-none text-white">
-                            {badges[to] > 99 ? '99+' : badges[to]}
-                          </span>
+                        {!collapsed && (
+                          <>
+                            <span className="flex-1 truncate">{label}</span>
+                            {badges[to] > 0 && (
+                              <span className="min-w-[20px] rounded-full bg-orange-500 px-1.5 py-0.5 text-center text-[11px] font-semibold leading-none text-white">
+                                {badges[to] > 99 ? '99+' : badges[to]}
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {collapsed && badges[to] > 0 && (
+                          <span className="absolute right-1 top-1 size-2 rounded-full bg-orange-500" />
                         )}
                       </>
                     )}
@@ -85,8 +120,9 @@ function SidebarContent({ sections, badges, onNavigate }) {
   );
 }
 
-
-
+// ---------------------------------------------------------------
+// UserMenu — inchangé
+// ---------------------------------------------------------------
 function UserMenu({ user, onPassword, onLogout }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -97,10 +133,15 @@ function UserMenu({ user, onPassword, onLogout }) {
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
-  const item = 'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-slate-100';
+  const item =
+    'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-slate-100';
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -129,10 +170,20 @@ function UserMenu({ user, onPassword, onLogout }) {
             <p className="truncate text-sm font-medium text-slate-900">{user.fullName}</p>
             <p className="truncate text-xs text-slate-500">{user.email}</p>
           </div>
-          <button role="menuitem" type="button" className={item} onClick={() => { setOpen(false); onPassword(); }}>
+          <button
+            role="menuitem"
+            type="button"
+            className={item}
+            onClick={() => { setOpen(false); onPassword(); }}
+          >
             <KeyRound className="size-4 text-slate-400" /> Changer mon mot de passe
           </button>
-          <button role="menuitem" type="button" className={cn(item, 'text-red-600 hover:bg-red-50 focus-visible:bg-red-50')} onClick={onLogout}>
+          <button
+            role="menuitem"
+            type="button"
+            className={cn(item, 'text-red-600 hover:bg-red-50 focus-visible:bg-red-50')}
+            onClick={onLogout}
+          >
             <LogOut className="size-4" /> Se déconnecter
           </button>
         </div>
@@ -140,41 +191,79 @@ function UserMenu({ user, onPassword, onLogout }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------
+// AppShell
+// ---------------------------------------------------------------
 export default function AppShell() {
   const { user, logout, can } = useAuth();
   const { pathname } = useLocation();
   const [drawer, setDrawer] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
   const canSeeAlerts = can('alerts.read');
   const { data: alerts } = useOpenAlertsCount(canSeeAlerts);
 
+  const menuBtnRef = useRef(null);
+  const closeBtnRef = useRef(null);
+  const drawerRef = useRef(null);
+
+  // Ferme le drawer à chaque changement de route
   useEffect(() => setDrawer(false), [pathname]);
-// Échap ferme le tiroir, et la page derrière ne défile plus
-useEffect(() => {
-  if (!drawer) return undefined;
-  const onKey = (e) => { if (e.key === 'Escape') setDrawer(false); };
-  const prev = document.documentElement.style.overflow;
-  document.documentElement.style.overflow = 'hidden';
-  window.addEventListener('keydown', onKey);
-  return () => {
-    window.removeEventListener('keydown', onKey);
-    document.documentElement.style.overflow = prev;
-  };
-}, [drawer]);
+
+  // Effets du drawer mobile
+  useEffect(() => {
+    if (!drawer) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setDrawer(false); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    closeBtnRef.current?.focus();
+    const onTab = (e) => {
+      if (e.key !== 'Tab' || !drawerRef.current) return;
+      const focusables = drawerRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onTab);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onTab);
+      document.documentElement.style.overflow = prevOverflow;
+    };
+  }, [drawer]);
+
+  useEffect(() => { if (!drawer) menuBtnRef.current?.focus?.(); }, [drawer]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e) => { if (e.matches) setDrawer(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const sections = useMemo(
-    () => NAV
-      .map((s) => ({ ...s, items: s.items.filter((i) => !i.perm || can(i.perm)) }))
-      .filter((s) => s.items.length > 0),
+    () =>
+      NAV
+        .map((s) => ({ ...s, items: s.items.filter((i) => !i.perm || can(i.perm)) }))
+        .filter((s) => s.items.length > 0),
     [can]
   );
   const badges = { '/fleet/alerts': alerts?.open ?? 0 };
 
-  // Fil d'Ariane : section et page courantes
   const current = useMemo(() => {
     let best = null;
     for (const s of NAV) {
       for (const it of s.items) {
-        const hit = it.end ? pathname === it.to : pathname === it.to || pathname.startsWith(`${it.to}/`);
+        const hit = it.end
+          ? pathname === it.to
+          : pathname === it.to || pathname.startsWith(`${it.to}/`);
         if (hit && (!best || it.to.length > best.item.to.length)) best = { section: s.section, item: it };
       }
     }
@@ -182,50 +271,89 @@ useEffect(() => {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen lg:pl-64">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-white lg:block">
-        <SidebarContent sections={sections} badges={badges} />
+    <div className={cn('min-h-screen transition-[padding] duration-200', sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64')}>
+      {/* ---------- Sidebar desktop ---------- */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 hidden border-r border-slate-200 bg-white transition-[width] duration-200 lg:block',
+          sidebarCollapsed ? 'w-20' : 'w-64'
+        )}
+      >
+        <SidebarContent
+          sections={sections}
+          badges={badges}
+          collapsed={sidebarCollapsed}
+          onClose={() => setSidebarCollapsed((v) => !v)}
+          closeBtnRef={undefined}
+        />
       </aside>
 
-{drawer && (
-  <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-    <div className="absolute inset-0 animate-fade-in bg-slate-900/50 backdrop-blur-[2px]" onClick={() => setDrawer(false)} />
-    <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] animate-slide-in bg-white shadow-xl">
-      <SidebarContent sections={sections} badges={badges} onNavigate={() => setDrawer(false)} />
-      <button
-        type="button"
-        onClick={() => setDrawer(false)}
-        aria-label="Fermer le menu"
-        className="absolute right-2 top-3 grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-      >
-        <X className="size-5" />
-      </button>
-    </aside>
-  </div>
-)}
+      {/* ---------- Drawer mobile ---------- */}
+      {drawer && (
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+          <div
+            className="absolute inset-0 animate-fade-in bg-slate-900/50 backdrop-blur-[2px]"
+            onClick={() => setDrawer(false)}
+            aria-hidden="true"
+          />
+          <aside
+            ref={drawerRef}
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] animate-slide-in flex-col bg-white shadow-xl"
+          >
+            <SidebarContent
+              sections={sections}
+              badges={badges}
+              onNavigate={() => setDrawer(false)}
+              onClose={() => setDrawer(false)}
+              closeBtnRef={closeBtnRef}
+            />
+          </aside>
+        </div>
+      )}
+
       <div className="flex min-h-screen min-w-0 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8">
-          <button type="button" onClick={() => setDrawer(true)} aria-label="Ouvrir le menu"
-                  className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden">
-            <Menu className="size-5" />
-          </button>
-          <div className="min-w-0 flex-1 truncate text-sm">
-            {current?.section && <span className="text-slate-400">{current.section} / </span>}
-            <span className="font-medium text-slate-800">{current?.item.label}</span>
-          </div>
-          {canSeeAlerts && (
-            <Link to="/fleet/alerts" aria-label={`Alertes : ${alerts?.open ?? 0} à traiter`}
-                  className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
-              <BellRing className="size-5" />
-              {alerts?.open > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 min-w-4.5 rounded-full bg-orange-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white">
-                  {alerts.open}
-                </span>
-              )}
-            </Link>
-          )}
-          <UserMenu user={user} onPassword={() => setShowPassword(true)} onLogout={logout} />
-        </header>
+     
+     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8">
+  {/* Hamburger UNIQUEMENT pour mobile */}
+  <button
+    ref={menuBtnRef}
+    type="button"
+    onClick={() => setDrawer(true)}
+    aria-label="Ouvrir le menu"
+    aria-expanded={drawer}
+    className="rounded-lg p-2 text-slate-600 outline-none transition hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-500/50 lg:hidden"
+  >
+    <Menu className="size-5" />
+  </button>
+
+  {/* Fil d'Ariane */}
+  <div className="min-w-0 flex-1 truncate text-sm">
+    {current?.section && <span className="text-slate-400">{current.section} / </span>}
+    <span className="font-medium text-slate-800">{current?.item.label}</span>
+  </div>
+
+  {/* Alertes + Menu utilisateur */}
+  {canSeeAlerts && (
+    <Link
+      to="/fleet/alerts"
+      aria-label={`Alertes : ${alerts?.open ?? 0} à traiter`}
+      className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+    >
+      <BellRing className="size-5" />
+      {alerts?.open > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 min-w-4.5 rounded-full bg-orange-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white">
+          {alerts.open}
+        </span>
+      )}
+    </Link>
+  )}
+
+  <UserMenu
+    user={user}
+    onPassword={() => setShowPassword(true)}
+    onLogout={logout}
+  />
+</header>
 
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Suspense fallback={<PageLoader />}>

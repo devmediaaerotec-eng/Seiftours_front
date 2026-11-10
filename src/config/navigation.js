@@ -10,6 +10,13 @@ export const NAV = [
   { section: 'Ventes', items: [
     { label: 'Réservations hôtels', to: '/bookings', icon: CalendarCheck, perm: 'bookings.read' },
     { label: 'Réservations voyages', to: '/trip-requests', icon: Ticket, perm: 'trips.manage' },
+    { label: 'Demandes de location', to: '/fleet/transport', icon: Inbox, perm: 'fleet.read' },
+ 
+  ]},
+    { section: 'Clients', items: [
+     
+     { label: 'Messages des clients', to: '/contact', icon: Inbox  },
+
   ]},
   { section: 'Catalogue', items: [
     { label: 'Voyages organisés', to: '/trips', icon: Plane, perm: 'trips.manage' },
@@ -26,7 +33,6 @@ export const NAV = [
     { label: 'Missions', to: '/fleet/missions', icon: Route, perm: 'fleet.read' },
     { label: 'Bus', to: '/fleet/buses', icon: Bus, perm: 'fleet.read' },
     { label: 'Chauffeurs', to: '/fleet/drivers', icon: UserRound, perm: 'fleet.read' },
-    { label: 'Demandes de location', to: '/fleet/transport', icon: Inbox, perm: 'fleet.read' },
     { label: 'Alertes', to: '/fleet/alerts', icon: BellRing, perm: 'alerts.read' },
   ]},
   { section: 'Administration', items: [

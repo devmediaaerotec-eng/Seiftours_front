@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     clearToken();
     setUser(null);
-    queryClient.clear();            // évite de montrer les données d'un utilisateur au suivant
+    queryClient.clear(); // évite de montrer les données d'un utilisateur au suivant
   }, [queryClient]);
 
   useEffect(() => { setUnauthorizedHandler(logout); }, [logout]);
@@ -31,8 +31,15 @@ export function AuthProvider({ children }) {
     setUser(await api('/admin/me'));
   }, []);
 
+  // Droit d'accès : le super_admin a tous les droits, les autres rôles
+  // doivent avoir la permission dans leur liste (ou le joker '*').
   const can = useCallback(
-    (perm) => !!user?.permissions?.includes(perm),
+    (perm) => {
+      if (!user) return false;
+      if (user.role === 'super_admin') return true;
+      const list = user.permissions;
+      return Array.isArray(list) && (list.includes('*') || list.includes(perm));
+    },
     [user]
   );
 

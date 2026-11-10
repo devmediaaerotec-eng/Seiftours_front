@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowRight, Banknote, BellRing, Bus, CalendarCheck, CheckCircle2, ClipboardCheck, ClipboardList, History,
-  Inbox, MessageSquare, Plane, Plus, RefreshCw, Route, Tag, TrendingDown, TrendingUp, Wallet,
+  ArrowRight, Banknote, BellRing, Bus, CalendarCheck, CheckCircle2, ClipboardCheck, ClipboardList,  
+ Plane, Plus, RefreshCw, Route, Tag, TrendingDown, TrendingUp, Wallet,
 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import BarChart from '@/components/ui/BarChart';
@@ -11,10 +11,9 @@ import Button from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Card';
 import Segmented from '@/components/ui/Segmented';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { MISSION_STATUS } from '@/features/fleet';
-import { cn } from '@/lib/cn';
+ import { cn } from '@/lib/cn';
 import { api } from '@/lib/http';
-import { STATUS, agoFromMs, fmtDate, fmtDayLong, fmtDayShort, hmOf, money, nowLocal, timeAgo, todayYmd } from '@/lib/format';
+import { STATUS, agoFromMs, fmtDayLong, fmtDayShort,   money, nowLocal, timeAgo, todayYmd } from '@/lib/format';
 
 const ENTITY = {
   trip: 'Voyage', deal: 'Bon plan', deal_category: 'Catégorie', destination: 'Destination', region: 'Région',
@@ -25,8 +24,7 @@ const VERB = {
   reorder: 'réordonné', status: 'statut modifié', archive: 'archivé', restore: 'restauré', pin_reset: 'PIN régénéré',
   activate: 'réactivé', deactivate: 'désactivé', password_reset: 'mot de passe réinitialisé', permissions: 'droits modifiés',
 };
-const activityText = (a) => `${ENTITY[a.entity_type] ?? a.entity_type} ${VERB[a.action.split('.')[1]] ?? a.action.split('.')[1]}`;
-
+ 
 const SEV_TONE = { critical: 'bad', warning: 'warn', info: 'info' };
 const DOT = { bad: 'bg-red-500', warn: 'bg-amber-500', info: 'bg-sky-500' };
 const ICON_TONE = {
@@ -220,28 +218,7 @@ export default function DashboardPage() {
                 </Panel>
               )}
 
-              {f && (
-                <Panel title="Missions du jour" icon={Bus} action={<MoreLink to="/fleet/missions/control">Contrôle du jour</MoreLink>}>
-                  <p className="mb-4 text-sm text-slate-500">
-                    Parc : {f.buses.available} disponible(s) · {f.buses.on_mission} en mission · {f.buses.unavailable} indisponible(s) · {f.drivers.active} chauffeur(s) en service
-                  </p>
-                  {f.missions.length === 0 ? <p className="text-sm text-slate-500">Aucune mission aujourd'hui.</p> : (
-                    <ul className="divide-y divide-slate-100">
-                      {f.missions.map((m) => (
-                        <li key={m.id} className="flex items-center gap-4 py-2.5">
-                          <span className="w-12 text-sm font-semibold text-brand-700">{hmOf(m.starts_at)}</span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium text-slate-900">{m.title}</span>
-                            <span className="block truncate text-xs text-slate-500">{m.driver_name} · Bus {m.bus_code}{m.pax ? ` · ${m.pax} pers.` : ''}</span>
-                          </span>
-                          <Badge tone={MISSION_STATUS[m.status]?.cls}>{MISSION_STATUS[m.status]?.label}</Badge>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </Panel>
-              )}
-
+    
         
             </div>
 
@@ -280,41 +257,7 @@ export default function DashboardPage() {
                   )}
                 </Panel>
               )}
-
-              {rq && (rq.latest_requests.length > 0 || rq.latest_messages.length > 0) && (
-                <Panel title="Demandes et messages" icon={Inbox}>
-                  {rq.latest_requests.length > 0 && (
-                    <>
-                      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Demandes de devis ({rq.new_requests})</h4>
-                      <ul className="mb-5 space-y-3">
-                        {rq.latest_requests.map((r) => (
-                          <li key={r.id} className="text-sm">
-                            <span className="font-medium text-slate-900">{r.client_name}</span> <span className="text-slate-500">· {r.trip_title}</span>
-                            <span className="block text-xs text-slate-500">
-                              {r.adults} adulte(s){r.children ? `, ${r.children} enfant(s)` : ''} · <a href={`tel:${r.client_phone}`}>{r.client_phone}</a> · {timeAgo(r.created_at)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                  {rq.latest_messages.length > 0 && (
-                    <>
-                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                        <MessageSquare className="size-3.5" /> Messages ({rq.new_messages})
-                      </h4>
-                      <ul className="space-y-3">
-                        {rq.latest_messages.map((m) => (
-                          <li key={m.id} className="text-sm">
-                            <span className="font-medium text-slate-900">{m.name}</span> <span className="text-xs text-slate-400">{timeAgo(m.created_at)}</span>
-                            <span className="block text-xs text-slate-500">{m.message}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </Panel>
-              )}
+ 
  
             </div>
           </div>

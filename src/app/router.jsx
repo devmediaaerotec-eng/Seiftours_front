@@ -31,7 +31,8 @@ const Settings = lazy(() => import('@/features/settings/SettingsPage'));
 const SupplierPayments = lazy(() => import('@/features/supplier-payments/pages/SupplierPaymentsPage'));
 const TripRequests = lazy(() => import('@/features/trip-requests/pages/TripRequestsPage'));
 const TransportRequests = lazy(() => import('@/features/fleet/transport/TransportRequestsPage'));
-
+ const Contact = lazy(() => import('@/features/contact-messages/ContactMessagesPage'));
+ 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   {
@@ -64,7 +65,7 @@ export const router = createBrowserRouter([
 { path: 'staff',        element: guard('staff.manage', <Staff />) },
 { path: 'settings',     element: guard('settings.manage', <Settings />) },
  { path: 'fleet/transport', element: guard('fleet.read', <TransportRequests />) },
-
+    { path: 'contact', element: guard('contact.read', <Contact />) },
  { path: 'supplier-payments', element: guard('supplier_payments.read', <SupplierPayments />) },
  { path: 'trip-requests', element: guard('trips.manage', <TripRequests />) },
       { path: '*', element: <div className="center">Page introuvable.</div> },
