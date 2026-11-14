@@ -18,7 +18,7 @@ export const tndToMillimes = (s) => {
   const t = String(s ?? '').trim().replace(',', '.');
   return t === '' ? null : Math.round(parseFloat(t) * 1000);
 };
-
+export const minutesBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 60000);
 export const slugify = (s) =>
   String(s ?? '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')

@@ -3,6 +3,7 @@ import Field from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { fmtRange, toInputDT } from '@/lib/format';
 import AssignmentFields from './AssignmentFields';
+import MissionBadges from './MissionBadges';
 import { useAvailability, useMission, useMissionControl, useMissionOptions } from './resource';
 
 const RESULTS = [
@@ -30,7 +31,7 @@ function ControlBody({ m, onDone, onCancel }) {
     pickup_place: m.pickup_place ?? '', destination: m.destination ?? '',
   };
   const {
-    register, handleSubmit, watch, getValues, setError, formState: { errors },
+    register, handleSubmit, watch, getValues, setError, clearErrors, formState: { errors },
   } = useForm({ defaultValues: { result: 'as_planned', note: '', ...original } });
 
   const result = watch('result');
@@ -43,7 +44,7 @@ function ControlBody({ m, onDone, onCancel }) {
       const changes = Object.fromEntries(
         Object.keys(original)
           .filter((k) => String(v[k]) !== String(original[k]))
-          .map((k) => [k, k.endsWith('_id') ? Number(v[k]) : v[k]])
+          .map((k) => [k, k.endsWith('_id') ? Number(v[k]) : v[k]]),
       );
       if (!Object.keys(changes).length) {
         setError('result', { type: 'manual', message: 'Modifiez au moins un élément (chauffeur, bus, horaires ou lieux).' });
@@ -58,7 +59,8 @@ function ControlBody({ m, onDone, onCancel }) {
       onDone();
     } catch (e) {
       if (e.status === 422 && e.data?.violations) {
-        Object.entries(e.data.violations).forEach(([k, msg]) => setError(k === 'changes' ? 'result' : k, { type: 'server', message: msg }));
+        Object.entries(e.data.violations).forEach(([k, msg]) =>
+          setError(k === 'changes' ? 'result' : k, { type: 'server', message: msg }));
       } else {
         toast.error(e.message);
       }
@@ -67,15 +69,21 @@ function ControlBody({ m, onDone, onCancel }) {
 
   return (
     <form onSubmit={submit} noValidate>
-      <div className="card" style={{ background: '#f8fafb' }}>
-        <strong>{m.title}</strong> <small className="muted">· {m.reference}</small><br />
-        <span className="muted">{fmtRange(m.starts_at, m.ends_at)} · {m.driver_name} · Bus {m.bus_code}</span>
+      <div className="card" style={{ background: '#f8fafb', padding: 14 }}>
+        <div className="title-row">
+          <div>
+            <strong>{m.title}</strong> <small className="muted">· {m.reference}</small><br />
+            <span className="muted">{fmtRange(m.starts_at, m.ends_at)} · {m.driver_name} · Bus {m.bus_code}</span>
+          </div>
+          <div style={{ marginLeft: 'auto' }}><MissionBadges m={m} /></div>
+        </div>
       </div>
 
+      <h4 className="form-section">Résultat</h4>
       <div className="opt-list">
         {RESULTS.map((o) => (
           <label key={o.value} className={`opt ${result === o.value ? 'on' : ''}`}>
-            <input type="radio" value={o.value} {...register('result')} />
+            <input type="radio" value={o.value} {...register('result', { onChange: () => clearErrors('result') })} />
             <span><strong>{o.label}</strong><small>{o.hint}</small></span>
           </label>
         ))}
@@ -88,7 +96,9 @@ function ControlBody({ m, onDone, onCancel }) {
           {availability.isFetching && <small className="muted">Vérification des disponibilités…</small>}
           <div className="form-grid">
             <AssignmentFields register={register} errors={errors} options={options.data} busy={availability.data} />
-            <Field label="Début réel" error={errors.starts_at}><input type="datetime-local" {...register('starts_at', { required: 'Champ requis' })} /></Field>
+            <Field label="Début réel" error={errors.starts_at}>
+              <input type="datetime-local" {...register('starts_at', { required: 'Champ requis' })} />
+            </Field>
             <Field label="Fin réelle" error={errors.ends_at}>
               <input type="datetime-local" {...register('ends_at', {
                 required: 'Champ requis',
@@ -102,7 +112,8 @@ function ControlBody({ m, onDone, onCancel }) {
       )}
 
       <Field label={result === 'as_planned' ? 'Remarque (optionnelle)' : 'Raison / remarque *'} error={errors.note} className="spaced">
-        <textarea rows="3" placeholder={result === 'modified' ? 'Ex. Bus remplacé suite à une panne, départ retardé de 30 min…' : ''}
+        <textarea rows="3"
+                  placeholder={result === 'modified' ? 'Ex. Bus remplacé suite à une panne, départ retardé de 30 min…' : ''}
                   {...register('note', {
                     validate: (v) => getValues('result') === 'as_planned' || v.trim().length >= 3 || 'Précisez la raison (3 caractères minimum)',
                   })} />

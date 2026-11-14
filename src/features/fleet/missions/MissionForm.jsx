@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import Field from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
-import { addMinutes, millimesToTnd, tndToMillimes, toInputDT } from '@/lib/format';
+import { addMinutes, millimesToTnd, minutesBetween, tndToMillimes, toInputDT } from '@/lib/format';
 import { MISSION_TYPE } from '../shared/status';
 import AssignmentFields from './AssignmentFields';
 import { missions, useAvailability, useMission, useMissionOptions } from './resource';
@@ -42,7 +42,7 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
   const save = missions.useSave();
   const options = useMissionOptions();
   const {
-    register, handleSubmit, watch, setValue, getValues, setError, formState: { errors },
+    register, handleSubmit, watch, setValue, getValues, setError, trigger, formState: { errors },
   } = useForm({ defaultValues: initial });
 
   const [starts, ends] = watch(['starts_at', 'ends_at']);
@@ -50,10 +50,14 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
   const buses = options.data?.buses ?? [];
   const drivers = options.data?.drivers ?? [];
 
+  // Changer le début décale la fin en gardant la durée (4 h par défaut)
   const onStartChange = (e) => {
     const v = e.target.value;
-    const end = getValues('ends_at');
-    if (v && (!end || end <= v)) setValue('ends_at', addMinutes(v, 240), { shouldValidate: true });
+    if (!v) return;
+    const [oldS, oldE] = [initial.starts_at && getValues('starts_at'), getValues('ends_at')];
+    const prevStart = starts; // valeur avant changement (watch)
+    const duration = prevStart && oldE && oldE > prevStart ? minutesBetween(prevStart, oldE) : 240;
+    setValue('ends_at', addMinutes(v, duration), { shouldValidate: true });
   };
 
   // Le chauffeur choisi propose son bus attitré si aucun bus n'est encore choisi
@@ -62,10 +66,13 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
     if (d?.assigned_bus_id && !getValues('bus_id')) setValue('bus_id', String(d.assigned_bus_id), { shouldValidate: true });
   };
 
+  // La capacité dépend du bus : on revalide le nombre de passagers
+  const onBusChange = () => { if (getValues('pax')) trigger('pax'); };
+
   const submit = handleSubmit(async (v) => {
     const body = {
       mission_type: v.mission_type,
-      title: v.title,
+      title: v.title.trim(),
       bus_id: Number(v.bus_id),
       driver_id: Number(v.driver_id),
       starts_at: v.starts_at,
@@ -85,7 +92,8 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
       onDone(res.mission);
     } catch (e) {
       if (e.status === 422 && e.data?.violations) {
-        Object.entries(e.data.violations).forEach(([k, msg]) => setError(k === 'price_millimes' ? 'price' : k, { type: 'server', message: msg }));
+        Object.entries(e.data.violations).forEach(([k, msg]) =>
+          setError(k === 'price_millimes' ? 'price' : k, { type: 'server', message: msg }));
         toast.error('Certains champs sont invalides.');
       } else {
         toast.error(e.message);
@@ -103,7 +111,11 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
           </select>
         </Field>
         <Field label="Intitulé *" error={errors.title} hint="Ex. Transfert aéroport Monastir → Hôtel Riadh">
-          <input autoFocus {...register('title', { required: 'Champ requis', maxLength: { value: 190, message: '190 caractères maximum' } })} />
+          <input autoFocus {...register('title', {
+            required: 'Champ requis',
+            validate: (v) => v.trim() !== '' || 'Champ requis',
+            maxLength: { value: 190, message: '190 caractères maximum' },
+          })} />
         </Field>
       </div>
 
@@ -124,7 +136,8 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
       {availability.isFetching && <small className="muted">Vérification des disponibilités…</small>}
       <div className="form-grid">
         <AssignmentFields register={register} errors={errors} options={options.data}
-                          busy={availability.data} disabled={locked} onDriverChange={onDriverChange} />
+                          busy={availability.data} disabled={locked}
+                          onDriverChange={onDriverChange} onBusChange={onBusChange} />
       </div>
 
       <h4 className="form-section">Trajet et client</h4>
@@ -153,7 +166,7 @@ function FormBody({ id, initial, locked, onDone, onCancel }) {
           })} />
         </Field>
         <Field label="Consignes pour le chauffeur" className="span-2" error={errors.notes}
-               hint="Reprises dans le message envoyé au chauffeur.">
+               hint="Reprises dans le message WhatsApp envoyé au chauffeur.">
           <textarea rows="3" {...register('notes')} />
         </Field>
       </div>

@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, CalendarCheck, Plane, Route, Tag, MapPin,
+  LayoutDashboard, CalendarCheck, Plane, Route, Tag, MapPin, Building2,
   Radar, Bus, UserRound, Compass, BellRing, Users, Settings, Inbox, Ticket, Landmark,
 } from 'lucide-react';
 
@@ -13,10 +13,11 @@ export const NAV = [
     { label: 'Demandes de location', to: '/fleet/transport', icon: Inbox, perm: 'fleet.read' },
  
   ]},
-    { section: 'Clients', items: [
-     
-     { label: 'Messages des clients', to: '/contact', icon: Inbox  },
-
+   
+  
+  { section: 'Clients', items: [
+    { label: 'Clients', to: '/clients', icon: Building2, perm: 'fleet.read' },
+    { label: 'Messages des clients', to: '/contact', icon: Inbox },
   ]},
   { section: 'Catalogue', items: [
     { label: 'Voyages organisés', to: '/trips', icon: Plane, perm: 'trips.manage' },

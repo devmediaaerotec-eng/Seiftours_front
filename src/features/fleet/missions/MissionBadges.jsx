@@ -1,7 +1,7 @@
-import { MISSION_STATUS } from '../shared/status';
+import { LIVE, liveState } from '../shared/liveState';
 
-export default function MissionBadges({ m }) {
-  const s = MISSION_STATUS[m.status];
+export default function MissionBadges({ m, now }) {
+  const s = LIVE[liveState(m, now)] ?? LIVE.upcoming;
   return (
     <span className="badges">
       <span className={`badge ${s.cls}`}>{s.label}</span>

@@ -1,14 +1,16 @@
-import { Copy, Pencil, Play, RotateCcw, ClipboardCheck, Trash2 } from 'lucide-react';
+import { Copy, MessageCircle, Pencil, Play, RotateCcw, ClipboardCheck, Trash2,BellRing} from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { fmtDateTime, fmtRange, money } from '@/lib/format';
+import { missionMessage, waLink } from '../shared/liveState';
 import { BUS_TYPE, MISSION_TYPE } from '../shared/status';
 import MissionBadges from './MissionBadges';
 import { missions, useMission, useMissionStatus } from './resource';
 
-export default function MissionDetail({ id, onEdit, onControl, onDuplicate, onClose }) {
-  const toast = useToast();
+export default function MissionDetail({ id, onEdit, onControl, onNotice, onDuplicate, onClose }) {
+
+const toast = useToast();
   const { can } = useAuth();
   const { data, isLoading, error } = useMission(id);
   const status = useMissionStatus();
@@ -46,6 +48,8 @@ export default function MissionDetail({ id, onEdit, onControl, onDuplicate, onCl
     : m.needs_resend ? 'Envoyé, puis modifié : à renvoyer'
     : `Envoyé le ${fmtDateTime(m.notified_at)}`;
 
+  const needsSend = !m.notified_at || m.needs_resend;
+
   return (
     <div>
       <div className="title-row" style={{ marginBottom: 14 }}>
@@ -55,6 +59,17 @@ export default function MissionDetail({ id, onEdit, onControl, onDuplicate, onCl
         </div>
         <div style={{ marginLeft: 'auto' }}><MissionBadges m={m} /></div>
       </div>
+
+      {needsSend && m.status === 'planned' && (
+        <div className="alert warn" style={{ marginBottom: 14 }}>
+          {sent}.
+          {m.driver_phone && (
+            <> <a href={waLink(m.driver_phone, missionMessage(m))} target="_blank" rel="noopener noreferrer">
+              Prévenir {m.driver_name} par WhatsApp
+            </a></>
+          )}
+        </div>
+      )}
 
       <div className="detail-grid">
         <section>
@@ -127,6 +142,9 @@ export default function MissionDetail({ id, onEdit, onControl, onDuplicate, onCl
           <button className="btn ghost" disabled={status.isPending}
                   onClick={() => setStatus('planned', 'Rouvrir cette mission (retour à « Planifiée ») ?')}><RotateCcw size={16} /> Rouvrir</button>
         )}
+        {canManage && m.driver_phone && (
+  <button className="btn ghost" onClick={onNotice}><BellRing size={16} /> Message…</button>
+)}
         {canManage && <button className="btn ghost" onClick={onEdit}><Pencil size={16} /> Modifier</button>}
         {canManage && <button className="btn ghost" onClick={() => onDuplicate(m)}><Copy size={16} /> Dupliquer (+7 jours)</button>}
         {canManage && m.status === 'planned' && !m.controlled && (

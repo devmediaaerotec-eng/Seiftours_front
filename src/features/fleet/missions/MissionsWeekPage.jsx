@@ -1,25 +1,29 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileDown, Plus, Send } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import PageHeader from '@/components/ui/PageHeader';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { addDays, fmtDayShort, hmOf, missionDays, mondayOf, todayYmd } from '@/lib/format';
+import { liveState, useNow } from '../shared/liveState';
 import { BUS_TYPE, DRIVER_STATUS, MISSION_STATUS } from '../shared/status';
 import MissionModal from './MissionModal';
 import MissionTabs from './MissionTabs';
 import WeekProgramModal from './WeekProgramModal';
-import { useWeek } from './resource';
+import { downloadPdf, useWeek } from './resource';
 
-function Chip({ m, day, rows, onOpen }) {
+function Chip({ m, day, rows, now, onOpen }) {
   const first = missionDays(m)[0] === day;
+  const late = liveState(m, now) === 'late';
   return (
-    <button type="button" className={`chip st-${m.status}`} onClick={() => onOpen(m)}
-            title={`${m.title} — ${m.reference}`}>
-      <span className="chip-time">{first ? hmOf(m.starts_at) : '↳ suite'}</span>
+    <button type="button" className={`chip st-${m.status} ${late ? 'is-late' : ''}`} onClick={() => onOpen(m)}
+            title={`${m.title} — ${m.reference}${late ? ' (en retard)' : ''}`}>
+      <span className="chip-time">{first ? `${hmOf(m.starts_at)}–${hmOf(m.ends_at)}` : '↳ suite'}</span>
       <span className="chip-title">{m.title}</span>
       <span className="chip-sub">{rows === 'drivers' ? m.bus_code : m.driver_name}{m.pax ? ` · ${m.pax} p.` : ''}</span>
       <span className="chip-flags">
+        {late && <span title="En retard">⏰</span>}
         {m.changes_count > 0 && <span title="Modifiée">✎</span>}
         {m.needs_resend && <i className="chip-dot" title="À envoyer ou à renvoyer au chauffeur" />}
       </span>
@@ -28,8 +32,10 @@ function Chip({ m, day, rows, onOpen }) {
 }
 
 export default function MissionsWeekPage() {
+  const toast = useToast();
   const { can } = useAuth();
   const canManage = can('missions.manage');
+  const now = useNow();
   const [params, setParams] = useSearchParams();
   const today = todayYmd();
   const start = mondayOf(params.get('start') || today);
@@ -38,9 +44,11 @@ export default function MissionsWeekPage() {
   const { data, isLoading, error } = useWeek(start);
   const [target, setTarget] = useState(null);
   const [showProgram, setShowProgram] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(start, i)), [start]);
 
+  // Cellule (ligne|jour) → missions triées par heure : plusieurs missions par jour possibles
   const cells = useMemo(() => {
     const map = new Map();
     (data?.missions ?? []).forEach((m) => {
@@ -54,19 +62,24 @@ export default function MissionsWeekPage() {
         }
       });
     });
+    map.forEach((list) => list.sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
     return map;
   }, [data, rows, days]);
 
   const open = (t) => setTarget({ ...t, key: Date.now() });
-  const go = (newStart) => {
+  const patchParams = (patch) => {
     const next = new URLSearchParams(params);
-    next.set('start', newStart);
+    Object.entries(patch).forEach(([k, v]) => next.set(k, v));
     setParams(next);
   };
-  const setRows = (r) => {
-    const next = new URLSearchParams(params);
-    next.set('rows', r);
-    setParams(next);
+  const go = (newStart) => patchParams({ start: newStart });
+  const setRows = (r) => patchParams({ rows: r });
+
+  const exportPdf = async () => {
+    setExporting(true);
+    try { await downloadPdf('/week.pdf', { start }, `programme-${start}.pdf`); }
+    catch (e) { toast.error(e.message); }
+    finally { setExporting(false); }
   };
 
   const rowItems = rows === 'drivers' ? data?.drivers ?? [] : data?.buses ?? [];
@@ -76,6 +89,11 @@ export default function MissionsWeekPage() {
     <>
       <PageHeader title="Missions" action={(
         <div className="row-tools">
+          {canManage && (
+            <button className="btn ghost" disabled={exporting || !data?.missions?.length} onClick={exportPdf}>
+              <FileDown size={16} /> {exporting ? 'Export…' : 'PDF'}
+            </button>
+          )}
           {canManage && (
             <button className="btn ghost" onClick={() => setShowProgram(true)}>
               <Send size={16} /> Envoyer le programme{data?.to_send ? ` (${data.to_send})` : ''}
@@ -127,22 +145,27 @@ export default function MissionsWeekPage() {
                   )}
                 </div>
 
-                {days.map((d) => (
-                  <div key={d} className={`wk-cell ${d === today ? 'today' : ''}`}>
-                    {(cells.get(`${row.id}|${d}`) ?? []).map((m) => (
-                      <Chip key={m.id} m={m} day={d} rows={rows} onOpen={(x) => open({ mode: 'detail', id: x.id })} />
-                    ))}
-                    {canManage && (
-                      <button type="button" className="wk-add" aria-label="Ajouter une mission"
-                              onClick={() => open({
-                                mode: 'new',
-                                defaults: rows === 'drivers'
-                                  ? { date: d, driver_id: row.id, bus_id: row.assigned_bus_id }
-                                  : { date: d, bus_id: row.id, driver_id: row.driver_id },
-                              })}><Plus size={14} /></button>
-                    )}
-                  </div>
-                ))}
+                {days.map((d) => {
+                  const list = cells.get(`${row.id}|${d}`) ?? [];
+                  return (
+                    <div key={d} className={`wk-cell ${d === today ? 'today' : ''}`}>
+                      {list.length > 1 && <small className="wk-count">{list.length} missions</small>}
+                      {list.map((m) => (
+                        <Chip key={m.id} m={m} day={d} rows={rows} now={now}
+                              onOpen={(x) => open({ mode: 'detail', id: x.id })} />
+                      ))}
+                      {canManage && (
+                        <button type="button" className="wk-add" aria-label="Ajouter une mission"
+                                onClick={() => open({
+                                  mode: 'new',
+                                  defaults: rows === 'drivers'
+                                    ? { date: d, driver_id: row.id, bus_id: row.assigned_bus_id }
+                                    : { date: d, bus_id: row.id, driver_id: row.driver_id },
+                                })}><Plus size={14} /></button>
+                      )}
+                    </div>
+                  );
+                })}
               </Fragment>
             ))}
           </div>
@@ -155,6 +178,7 @@ export default function MissionsWeekPage() {
         {Object.entries(MISSION_STATUS).map(([k, s]) => <span key={k}><i className={`lg st-${k}`} />{s.label}</span>)}
         <span><i className="chip-dot static" /> À envoyer / à renvoyer au chauffeur</span>
         <span>✎ Modifiée depuis sa création</span>
+        <span>⏰ En retard</span>
         {data && <span style={{ marginLeft: 'auto' }}>{data.missions.length} mission(s) cette semaine</span>}
       </div>
 

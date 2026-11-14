@@ -1,28 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { FileDown, Plus } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Pagination from '@/components/ui/Pagination';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { fmtRange, money, todayYmd } from '@/lib/format';
+import { useNow } from '../shared/liveState';
 import { MISSION_STATUS, MISSION_TYPE } from '../shared/status';
 import MissionBadges from './MissionBadges';
 import MissionModal from './MissionModal';
 import MissionTabs from './MissionTabs';
-import { missions, useMissionOptions } from './resource';
+import { downloadPdf, missions, useMissionOptions } from './resource';
 
 export default function MissionsListPage() {
+  const toast = useToast();
   const { can } = useAuth();
+  const canManage = can('missions.manage');
+  const now = useNow();
   const [params, setParams] = useSearchParams();
   const get = (k) => params.get(k) || '';
   const [from, to, status, type, driver, bus, q, control] = ['from', 'to', 'status', 'type', 'driver', 'bus', 'q', 'control'].map(get);
   const page = Number(params.get('page') || 1);
   const [search, setSearch] = useState(q);
   const [target, setTarget] = useState(null);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => setSearch(q), [q]); // garde le champ synchronisé avec l'URL
 
   const options = useMissionOptions();
+  const filters = { from, to, status, type, driver, bus, q, control };
   const { data, isLoading, error } = missions.useList({
-    from, to, status, type, driver, bus, q, control, page, limit: 20, order: control ? 'asc' : 'desc',
+    ...filters, page, limit: 20, order: control ? 'asc' : 'desc',
   });
 
   const update = (patch) => {
@@ -31,11 +40,28 @@ export default function MissionsListPage() {
     setParams(next);
   };
   const open = (t) => setTarget({ ...t, key: Date.now() });
+  const hasFilters = Object.values(filters).some(Boolean);
+
+  const exportPdf = async () => {
+    setExporting(true);
+    try { await downloadPdf('/export.pdf', filters, 'missions.pdf'); }
+    catch (e) { toast.error(e.message); }
+    finally { setExporting(false); }
+  };
+
+  const items = data?.items ?? [];
 
   return (
     <>
-      <PageHeader title="Missions" action={can('missions.manage') && (
-        <button className="btn" onClick={() => open({ mode: 'new', defaults: { date: todayYmd() } })}><Plus size={16} /> Nouvelle mission</button>
+      <PageHeader title="Missions" action={canManage && (
+        <div className="row-tools">
+          <button className="btn ghost" disabled={exporting || !items.length} onClick={exportPdf}>
+            <FileDown size={16} /> {exporting ? 'Export…' : 'PDF'}
+          </button>
+          <button className="btn" onClick={() => open({ mode: 'new', defaults: { date: todayYmd() } })}>
+            <Plus size={16} /> Nouvelle mission
+          </button>
+        </div>
       )} />
       <MissionTabs />
 
@@ -66,6 +92,9 @@ export default function MissionsListPage() {
           <input type="checkbox" checked={control === 'pending'} onChange={(e) => update({ control: e.target.checked ? 'pending' : '', page: '' })} />
           À contrôler
         </label>
+        {hasFilters && (
+          <button className="btn ghost sm" onClick={() => { setSearch(''); setParams({}); }}>Réinitialiser</button>
+        )}
       </div>
 
       {error && <div className="alert bad">{error.message}</div>}
@@ -73,22 +102,21 @@ export default function MissionsListPage() {
       <div className="card">
         <table>
           <thead>
-            <tr><th>Mission</th><th>Horaires</th><th>Chauffeur · Bus</th><th>Client</th><th>Prix</th><th>Statut</th><th /></tr>
+            <tr><th>Mission</th><th>Horaires</th><th>Chauffeur · Bus</th><th>Client</th><th>Statut</th><th /></tr>
           </thead>
           <tbody>
-            {(data?.items ?? []).map((m) => (
+            {items.map((m) => (
               <tr key={m.id} className={m.needs_control ? 'row-warn' : ''}>
                 <td><strong>{m.title}</strong><br /><small className="muted">{m.reference} · {MISSION_TYPE[m.mission_type]}</small></td>
                 <td>{fmtRange(m.starts_at, m.ends_at)}</td>
                 <td>{m.driver_name}<br /><small className="muted">Bus {m.bus_code}</small></td>
                 <td>{m.client_name || '—'}{m.pax ? <><br /><small className="muted">{m.pax} pers.</small></> : null}</td>
-                <td>{m.price_millimes != null ? money(m.price_millimes) : '—'}</td>
-                <td><MissionBadges m={m} /></td>
+                 <td><MissionBadges m={m} now={now} /></td>
                 <td><button className="btn ghost sm" onClick={() => open({ mode: 'detail', id: m.id })}>Détails</button></td>
               </tr>
             ))}
             {isLoading && <tr><td colSpan="7" className="muted">Chargement…</td></tr>}
-            {!isLoading && (data?.items ?? []).length === 0 && <tr><td colSpan="7" className="muted">Aucune mission.</td></tr>}
+            {!isLoading && items.length === 0 && <tr><td colSpan="7" className="muted">Aucune mission.</td></tr>}
           </tbody>
         </table>
       </div>
