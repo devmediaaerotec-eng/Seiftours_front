@@ -5,13 +5,14 @@ import PageHeader from '@/components/ui/PageHeader';
 import Pagination from '@/components/ui/Pagination';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { fmtRange, money, todayYmd } from '@/lib/format';
+import { fmtRange, todayYmd } from '@/lib/format';
 import { useNow } from '../shared/liveState';
 import { MISSION_STATUS, MISSION_TYPE } from '../shared/status';
 import MissionBadges from './MissionBadges';
 import MissionModal from './MissionModal';
 import MissionTabs from './MissionTabs';
 import { downloadPdf, missions, useMissionOptions } from './resource';
+import './missions.css';
 
 export default function MissionsListPage() {
   const toast = useToast();
@@ -56,67 +57,72 @@ export default function MissionsListPage() {
       <PageHeader title="Missions" action={canManage && (
         <div className="row-tools">
           <button className="btn ghost" disabled={exporting || !items.length} onClick={exportPdf}>
-            <FileDown size={16} /> {exporting ? 'Export…' : 'PDF'}
+            <FileDown size={16} /> <span className="hide-sm">{exporting ? 'Export…' : 'PDF'}</span>
           </button>
           <button className="btn" onClick={() => open({ mode: 'new', defaults: { date: todayYmd() } })}>
-            <Plus size={16} /> Nouvelle mission
+            <Plus size={16} /> <span className="hide-sm">Nouvelle </span>mission
           </button>
         </div>
       )} />
       <MissionTabs />
 
-      <div className="filters wrap">
-        <form onSubmit={(e) => { e.preventDefault(); update({ q: search.trim(), page: '' }); }}>
-          <input placeholder="Référence, client, trajet, chauffeur, bus…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <button className="btn">Rechercher</button>
-        </form>
-        <input type="date" aria-label="Du" value={from} onChange={(e) => update({ from: e.target.value, page: '' })} />
-        <input type="date" aria-label="Au" value={to} onChange={(e) => update({ to: e.target.value, page: '' })} />
-        <select value={status} onChange={(e) => update({ status: e.target.value, page: '' })}>
-          <option value="">Tous les statuts</option>
-          {Object.entries(MISSION_STATUS).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
-        </select>
-        <select value={type} onChange={(e) => update({ type: e.target.value, page: '' })}>
-          <option value="">Tous les types</option>
-          {Object.entries(MISSION_TYPE).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-        </select>
-        <select value={driver} onChange={(e) => update({ driver: e.target.value, page: '' })}>
-          <option value="">Tous les chauffeurs</option>
-          {(options.data?.drivers ?? []).map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
-        </select>
-        <select value={bus} onChange={(e) => update({ bus: e.target.value, page: '' })}>
-          <option value="">Tous les bus</option>
-          {(options.data?.buses ?? []).map((b) => <option key={b.id} value={b.id}>{b.code}</option>)}
-        </select>
-        <label className="chk" style={{ margin: 0, whiteSpace: 'nowrap' }}>
-          <input type="checkbox" checked={control === 'pending'} onChange={(e) => update({ control: e.target.checked ? 'pending' : '', page: '' })} />
-          À contrôler
-        </label>
-        {hasFilters && (
-          <button className="btn ghost sm" onClick={() => { setSearch(''); setParams({}); }}>Réinitialiser</button>
-        )}
-      </div>
+      <details className="filters-box" open={hasFilters}>
+        <summary className="btn ghost" style={{ marginBottom: 8 }}>
+          Filtres{hasFilters ? ' (actifs)' : ''}
+        </summary>
+        <div className="filters wrap">
+          <form onSubmit={(e) => { e.preventDefault(); update({ q: search.trim(), page: '' }); }}>
+            <input placeholder="Référence, client, trajet, chauffeur, bus…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <button className="btn">Rechercher</button>
+          </form>
+          <input type="date" aria-label="Du" value={from} onChange={(e) => update({ from: e.target.value, page: '' })} />
+          <input type="date" aria-label="Au" value={to} onChange={(e) => update({ to: e.target.value, page: '' })} />
+          <select value={status} onChange={(e) => update({ status: e.target.value, page: '' })}>
+            <option value="">Tous les statuts</option>
+            {Object.entries(MISSION_STATUS).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
+          </select>
+          <select value={type} onChange={(e) => update({ type: e.target.value, page: '' })}>
+            <option value="">Tous les types</option>
+            {Object.entries(MISSION_TYPE).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+          </select>
+          <select value={driver} onChange={(e) => update({ driver: e.target.value, page: '' })}>
+            <option value="">Tous les chauffeurs</option>
+            {(options.data?.drivers ?? []).map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
+          </select>
+          <select value={bus} onChange={(e) => update({ bus: e.target.value, page: '' })}>
+            <option value="">Tous les bus</option>
+            {(options.data?.buses ?? []).map((b) => <option key={b.id} value={b.id}>{b.code}</option>)}
+          </select>
+          <label className="chk" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={control === 'pending'} onChange={(e) => update({ control: e.target.checked ? 'pending' : '', page: '' })} />
+            À contrôler
+          </label>
+          {hasFilters && (
+            <button className="btn ghost sm" onClick={() => { setSearch(''); setParams({}); }}>Réinitialiser</button>
+          )}
+        </div>
+      </details>
 
       {error && <div className="alert bad">{error.message}</div>}
 
       <div className="card">
-        <table>
+        <table className="rt">
           <thead>
             <tr><th>Mission</th><th>Horaires</th><th>Chauffeur · Bus</th><th>Client</th><th>Statut</th><th /></tr>
           </thead>
           <tbody>
             {items.map((m) => (
               <tr key={m.id} className={m.needs_control ? 'row-warn' : ''}>
-                <td><strong>{m.title}</strong><br /><small className="muted">{m.reference} · {MISSION_TYPE[m.mission_type]}</small></td>
-                <td>{fmtRange(m.starts_at, m.ends_at)}</td>
-                <td>{m.driver_name}<br /><small className="muted">Bus {m.bus_code}</small></td>
-                <td>{m.client_name || '—'}{m.pax ? <><br /><small className="muted">{m.pax} pers.</small></> : null}</td>
-                 <td><MissionBadges m={m} now={now} /></td>
+                <td data-label="Mission"><strong>{m.title}</strong><br /><small className="muted">{m.reference} · {MISSION_TYPE[m.mission_type]}</small></td>
+                <td data-label="Horaires">{fmtRange(m.starts_at, m.ends_at)}</td>
+                <td data-label="Chauffeur · Bus">{m.driver_name}<br /><small className="muted">Bus {m.bus_code}</small></td>
+                <td data-label="Client">{m.client_name || '—'}{m.pax ? <><br /><small className="muted">{m.pax} pers.</small></> : null}</td>
+                <td data-label="Statut"><MissionBadges m={m} now={now} /></td>
                 <td><button className="btn ghost sm" onClick={() => open({ mode: 'detail', id: m.id })}>Détails</button></td>
               </tr>
             ))}
-            {isLoading && <tr><td colSpan="7" className="muted">Chargement…</td></tr>}
-            {!isLoading && items.length === 0 && <tr><td colSpan="7" className="muted">Aucune mission.</td></tr>}
+            {isLoading && <tr><td colSpan="6" className="muted">Chargement…</td></tr>}
+            {!isLoading && items.length === 0 && <tr><td colSpan="6" className="muted">Aucune mission.</td></tr>}
           </tbody>
         </table>
       </div>

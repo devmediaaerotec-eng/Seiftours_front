@@ -151,3 +151,112 @@
 .leg-card { @apply mb-3 p-4; }
 .leg-head { @apply mb-3 flex items-center gap-3; }
 .assign-row { @apply mb-2 grid grid-cols-[1fr_1fr_auto] items-end gap-2; }
+
+
+/* ---------- Filters ---------- */
+.clients-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.clients-filters input[type="search"] {
+  flex: 1 1 240px;
+  min-width: 0;            /* allow shrink inside flex */
+}
+
+/* ---------- Card wrapper ---------- */
+.clients-card {
+  overflow-x: auto;        /* safety on tablets */
+  padding: 0;
+}
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.clients-table th,
+.clients-table td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.clients-table .col-actions { width: 1%; white-space: nowrap; }
+.clients-table tr.is-archived { opacity: 0.55; }
+
+/* ---------- Mobile: table -> cards ---------- */
+@media (max-width: 720px) {
+  .clients-table thead { display: none; }
+
+  .clients-table,
+  .clients-table tbody,
+  .clients-table tr,
+  .clients-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .clients-table tr {
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 8px 4px;
+    background: var(--surface, #fff);
+  }
+
+  .clients-table td {
+    padding: 6px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    border: none;
+  }
+
+  /* Label on the left, value on the right */
+  .clients-table td::before {
+    content: attr(data-label);
+    font-size: 12px;
+    color: var(--muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    flex: 0 0 auto;
+  }
+
+  .clients-table td[data-label] > * { text-align: right; }
+
+  /* Actions get their own full-width row */
+  .clients-table td.col-actions {
+    display: block;
+    padding-top: 8px;
+    border-top: 1px solid var(--border, #e5e7eb);
+    margin-top: 4px;
+  }
+  .clients-table td.col-actions::before { content: none; }
+
+  .clients-table .table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .clients-table .table-actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* Full-bleed search bar */
+  .clients-filters input[type="search"] { flex: 1 1 100%; }
+}
+
+/* ---------- Form grid stacks on mobile ---------- */
+@media (max-width: 640px) {
+  .form-grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+  .form-grid-responsive .span-2 { grid-column: auto !important; }
+}
+
+.assign-toggle { @apply mb-2 mt-0 text-[13px] text-slate-500; }
+.assign-custom { @apply mb-3 ml-2 grid grid-cols-2 gap-2 border-l-2 border-gold-300 pl-3; }
+.day-chip { @apply cursor-pointer rounded-lg bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50; }
+.day-chip.on { @apply bg-brand-600 text-white ring-brand-600 hover:bg-brand-700; }

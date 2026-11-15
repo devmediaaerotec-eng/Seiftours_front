@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CalendarCheck, Plane, Route, Tag, MapPin, Building2,
-  Radar, Bus, UserRound, Compass, BellRing, Users, Settings, Inbox, Ticket, Landmark,
+  Radar, Bus, UserRound, Compass, BellRing, Users, Settings, Inbox, Ticket, Landmark, MessageSquare,
 } from 'lucide-react';
 
 export const NAV = [
@@ -10,14 +10,9 @@ export const NAV = [
   { section: 'Ventes', items: [
     { label: 'Réservations hôtels', to: '/bookings', icon: CalendarCheck, perm: 'bookings.read' },
     { label: 'Réservations voyages', to: '/trip-requests', icon: Ticket, perm: 'trips.manage' },
-    { label: 'Demandes de location', to: '/fleet/transport', icon: Inbox, perm: 'fleet.read' },
- 
   ]},
-   
-  
   { section: 'Clients', items: [
-    { label: 'Clients', to: '/clients', icon: Building2, perm: 'fleet.read' },
-    { label: 'Messages des clients', to: '/contact', icon: Inbox },
+    { label: 'Messages des clients', to: '/contact', icon: MessageSquare, perm: 'contact.read' },
   ]},
   { section: 'Catalogue', items: [
     { label: 'Voyages organisés', to: '/trips', icon: Plane, perm: 'trips.manage' },
@@ -30,8 +25,10 @@ export const NAV = [
     { label: 'Règlements fournisseurs', to: '/supplier-payments', icon: Landmark, perm: 'supplier_payments.read' },
   ]},
   { section: 'Flotte', items: [
+    { label: 'Clients', to: '/clients', icon: Building2, perm: 'fleet.read' },
     { label: 'Suivi en direct', to: '/fleet/live', icon: Radar, perm: 'fleet.track' },
     { label: 'Missions', to: '/fleet/missions', icon: Route, perm: 'fleet.read' },
+    { label: 'Demandes de location', to: '/fleet/transport', icon: Inbox, perm: 'fleet.read' },
     { label: 'Bus', to: '/fleet/buses', icon: Bus, perm: 'fleet.read' },
     { label: 'Chauffeurs', to: '/fleet/drivers', icon: UserRound, perm: 'fleet.read' },
     { label: 'Alertes', to: '/fleet/alerts', icon: BellRing, perm: 'alerts.read' },

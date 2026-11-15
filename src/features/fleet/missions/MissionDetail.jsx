@@ -1,27 +1,50 @@
-import { Copy, MessageCircle, Pencil, Play, RotateCcw, ClipboardCheck, Trash2,BellRing} from 'lucide-react';
+import { BellRing, ClipboardCheck, Copy, Pencil, Play, RotateCcw, Trash2 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { fmtDateTime, fmtRange, money } from '@/lib/format';
 import { missionMessage, waLink } from '../shared/liveState';
 import { BUS_TYPE, MISSION_TYPE } from '../shared/status';
+import CancelSeries from './CancelSeries';
 import MissionBadges from './MissionBadges';
-import { missions, useMission, useMissionStatus } from './resource';
+import { missions, useDeleteSeries, useMarkNotified, useMission, useMissionStatus } from './resource';
+import './missions.css';
+
+const LEG = { aller: 'Aller', retour: 'Retour' };
 
 export default function MissionDetail({ id, onEdit, onControl, onNotice, onDuplicate, onClose }) {
-
-const toast = useToast();
+  const toast = useToast();
   const { can } = useAuth();
   const { data, isLoading, error } = useMission(id);
   const status = useMissionStatus();
+  const delSeries = useDeleteSeries();
+  const markNotified = useMarkNotified();
   const remove = missions.useRemove();
 
   if (isLoading) return <div className="center">Chargement…</div>;
   if (error) return <div className="alert bad">{error.message}</div>;
 
-  const { mission: m, events } = data;
+  const { mission: m, events, series } = data;
   const canManage = can('missions.manage');
   const canControl = can('missions.control');
+  const cancelled = m.status === 'cancelled';
+  const inSeries = !!m.series_ref && Number(series?.total) > 1;
+
+  const removeSeries = async () => {
+  if (!window.confirm('Supprimer les missions à venir de cette répétition ? Celles déjà envoyées, contrôlées ou passées sont conservées.')) return;
+  try {
+    const r = await delSeries.mutateAsync(m.series_ref);
+    const parts = [];
+    if (r.past) parts.push(`${r.past} passée(s)`);
+    if (r.notified) parts.push(`${r.notified} déjà envoyée(s) au chauffeur`);
+    if (r.done && !r.past) parts.push(`${r.done} déjà traitée(s)`);
+    toast.success(`${r.deleted} supprimée(s), ${r.kept} conservée(s)${parts.length ? ` (${parts.join(', ')})` : ''}.`);
+    if (r.notified > 0) toast.warn('Pour les missions déjà envoyées, utilisez « Annuler la série » : le chauffeur sera prévenu.');
+    if (r.deleted > 0 && r.kept === 0) onClose();
+  } catch (e) {
+    toast.error(e.message);
+  }
+};
 
   const setStatus = async (to, confirmMsg) => {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -44,28 +67,50 @@ const toast = useToast();
     }
   };
 
-  const sent = !m.notified_at ? 'Pas encore envoyé au chauffeur'
-    : m.needs_resend ? 'Envoyé, puis modifié : à renvoyer'
-    : `Envoyé le ${fmtDateTime(m.notified_at)}`;
+  /* ---------- État d'envoi au chauffeur ---------- */
+  const sent = cancelled
+    ? (!m.notified_at ? 'Annulée avant envoi : aucun message à envoyer'
+      : m.needs_resend ? 'Annulation à communiquer au chauffeur'
+      : `Annulation communiquée le ${fmtDateTime(m.notified_at)}`)
+    : (!m.notified_at ? 'Pas encore envoyé au chauffeur'
+      : m.needs_resend ? 'Envoyé, puis modifié : à renvoyer'
+      : `Envoyé le ${fmtDateTime(m.notified_at)}`);
 
-  const needsSend = !m.notified_at || m.needs_resend;
+  const showAlert = cancelled
+    ? !!m.notified_at && m.needs_resend
+    : m.status === 'planned' && (!m.notified_at || m.needs_resend);
+
+  const alertLabel = cancelled ? "Notifier l'annulation à"
+    : m.notified_at ? 'Envoyer la mise à jour à' : 'Envoyer le programme à';
 
   return (
     <div>
-      <div className="title-row" style={{ marginBottom: 14 }}>
+      <div className="title-row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <strong style={{ fontSize: 18 }}>{m.title}</strong><br />
+          <strong style={{ fontSize: 18 }}>{m.title}</strong>
+          {LEG[m.leg] && <span className="muted"> · {LEG[m.leg]}</span>}<br />
           <small className="muted">{m.reference} · {MISSION_TYPE[m.mission_type]}</small>
         </div>
         <div style={{ marginLeft: 'auto' }}><MissionBadges m={m} /></div>
       </div>
 
-      {needsSend && m.status === 'planned' && (
-        <div className="alert warn" style={{ marginBottom: 14 }}>
+      {inSeries && (
+        <div className="alert" style={{ marginBottom: 14 }}>
+          Mission récurrente : {series.total} occurrences du {series.first_day} au {series.last_day}
+          {Number(series.planned) > 0 && ` (${series.planned} encore planifiée(s))`}.
+        </div>
+      )}
+
+      {showAlert && (
+        <div className={`alert ${cancelled ? 'bad' : 'warn'}`} style={{ marginBottom: 14 }}>
           {sent}.
           {m.driver_phone && (
-            <> <a href={waLink(m.driver_phone, missionMessage(m))} target="_blank" rel="noopener noreferrer">
-              Prévenir {m.driver_name} par WhatsApp
+            <> <a
+              href={waLink(m.driver_phone, missionMessage(m))}
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => markNotified.mutate([m.id])}
+            >
+              {alertLabel} {m.driver_name} par WhatsApp
             </a></>
           )}
         </div>
@@ -89,7 +134,9 @@ const toast = useToast();
           <div className="person">
             <Avatar src={m.driver_photo} name={m.driver_name} size={40} />
             <div className="kv"><strong>{m.driver_name}</strong><br />
-              {m.driver_phone && <a href={`tel:${m.driver_phone}`}>{m.driver_phone}</a>}</div>
+              {m.driver_phone && <a href={`tel:${m.driver_phone}`}>{m.driver_phone}</a>}
+              {m.driver_note && <><br /><small className="muted">Zone : {m.driver_note}</small></>}
+            </div>
           </div>
         </section>
         <section>
@@ -117,7 +164,7 @@ const toast = useToast();
         )}
 
         <section>
-          <h4>Programme envoyé</h4>
+          <h4>{cancelled ? 'Communication au chauffeur' : 'Programme envoyé'}</h4>
           <div className="kv">{sent}</div>
         </section>
         <section>
@@ -129,12 +176,17 @@ const toast = useToast();
           </div>
         </section>
         {m.control_note && (
-          <section className="span-2"><h4>Note de contrôle</h4><div className="note-box">{m.control_note}</div></section>
+          <section className="span-2">
+            <h4>{cancelled ? "Motif d'annulation" : 'Note de contrôle'}</h4>
+            <div className="note-box">{m.control_note}</div>
+          </section>
         )}
       </div>
 
       <div className="detail-actions">
-        {canControl && <button className="btn" onClick={onControl}><ClipboardCheck size={16} /> Contrôler…</button>}
+        {canControl && (
+          <button className="btn primary-action" onClick={onControl}><ClipboardCheck size={16} /> Contrôler…</button>
+        )}
         {canControl && m.status === 'planned' && (
           <button className="btn ghost" disabled={status.isPending} onClick={() => setStatus('in_progress')}><Play size={16} /> Démarrer</button>
         )}
@@ -143,12 +195,18 @@ const toast = useToast();
                   onClick={() => setStatus('planned', 'Rouvrir cette mission (retour à « Planifiée ») ?')}><RotateCcw size={16} /> Rouvrir</button>
         )}
         {canManage && m.driver_phone && (
-  <button className="btn ghost" onClick={onNotice}><BellRing size={16} /> Message…</button>
-)}
+          <button className="btn ghost" onClick={onNotice}><BellRing size={16} /> Message…</button>
+        )}
         {canManage && <button className="btn ghost" onClick={onEdit}><Pencil size={16} /> Modifier</button>}
-        {canManage && <button className="btn ghost" onClick={() => onDuplicate(m)}><Copy size={16} /> Dupliquer (+7 jours)</button>}
+        {canManage && <button className="btn ghost" onClick={() => onDuplicate(m)}><Copy size={16} /> Dupliquer</button>}
+        {canManage && inSeries && <CancelSeries mission={m} series={series} />}
         {canManage && m.status === 'planned' && !m.controlled && (
           <button className="btn danger" onClick={del}><Trash2 size={16} /> Supprimer</button>
+        )}
+        {canManage && m.series_ref && (
+          <button className="btn ghost" disabled={delSeries.isPending} onClick={removeSeries}>
+            <Trash2 size={16} /> Supprimer la série…
+          </button>
         )}
       </div>
 

@@ -59,6 +59,12 @@ export const useBulkComplete = () =>
 export const useMarkNotified = () =>
   useMissionMutation((ids) => api(`${BASE}/mark-notified`, { method: 'POST', body: { ids } }));
 
+export const useCancelSeries = () =>
+  useMissionMutation(({ ref, ...body }) => api(`${BASE}/series/${ref}/cancel`, { method: 'POST', body }));
+
+export const useDeleteSeries = () =>
+  useMissionMutation((ref) => api(`${BASE}/series/${ref}`, { method: 'DELETE' }));
+
 // AJOUT : trace l'envoi d'un message (retard, rappel, avertissement…) dans l'historique
 export const useLogNotice = () =>
   useMissionMutation(({ id, ...body }) => api(`${BASE}/${id}/notice`, { method: 'POST', body }));

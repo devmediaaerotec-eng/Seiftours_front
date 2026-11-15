@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BellRing,Check, ChevronLeft, ChevronRight, FileDown, MessageCircle, Play } from 'lucide-react';
+import { BellRing, Check, ChevronLeft, ChevronRight, FileDown, MessageCircle, Play } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import PageHeader from '@/components/ui/PageHeader';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { addDays, fmtDateTime, fmtDayLong, hmOf, todayYmd } from '@/lib/format';
 import StatCards from '../shared/StatCards';
- import MissionBadges from './MissionBadges';
+import MissionBadges from './MissionBadges';
 import MissionModal from './MissionModal';
 import MissionTabs from './MissionTabs';
 import { downloadPdf, useBulkComplete, useDay, useMissionControl, useMissionStatus } from './resource';
 import { dayMessage, groupDayMessage, LIVE, liveState, sendToGroup, useNow, waLink } from '../shared/liveState';
+import { withCrew } from '../shared/messages';
+import './missions.css';
 
 export default function MissionsControlPage() {
   const toast = useToast();
@@ -28,7 +30,7 @@ export default function MissionsControlPage() {
   const status = useMissionStatus();
   const bulk = useBulkComplete();
   // all | late | in_progress | completed | not_done | cancelled | to_control
-const [filter, setFilter] = useState(params.get('filter') || 'all');
+  const [filter, setFilter] = useState(params.get('filter') || 'all');
   const [target, setTarget] = useState(null);
   const [exporting, setExporting] = useState(false);
 
@@ -40,14 +42,15 @@ const [filter, setFilter] = useState(params.get('filter') || 'all');
   };
 
   const items = useMemo(
-    () => (data?.missions ?? []).map((m) => ({ ...m, live: liveState(m, now) })),
+    () => withCrew((data?.missions ?? []).map((m) => ({ ...m, live: liveState(m, now) }))),
     [data, now],
   );
 
   const sendGroup = async () => {
-  const copied = await sendToGroup(groupDayMessage(date, items));
-  toast.success(copied ? 'Message copié : choisissez le groupe dans WhatsApp.' : 'WhatsApp ouvert : collez le message.');
-};
+    const copied = await sendToGroup(groupDayMessage(date, items));
+    toast.success(copied ? 'Message copié : choisissez le groupe dans WhatsApp.' : 'WhatsApp ouvert : collez le message.');
+  };
+
   const count = (k) => items.filter((m) => m.live === k).length;
   const toControl = useMemo(() => items.filter((m) => m.needs_control), [items]);
 
@@ -101,16 +104,16 @@ const [filter, setFilter] = useState(params.get('filter') || 'all');
 
   return (
     <>
-     <PageHeader title="Missions" action={canManage && (
-  <div className="row-tools">
-    <button className="btn ghost" disabled={!items.length} onClick={sendGroup}>
-      <MessageCircle size={16} /> Envoyer au groupe
-    </button>
-    <button className="btn ghost" disabled={exporting || !items.length} onClick={exportPdf}>
-      <FileDown size={16} /> {exporting ? 'Export…' : 'PDF'}
-    </button>
-  </div>
-)} />
+      <PageHeader title="Missions" action={canManage && (
+        <div className="row-tools">
+          <button className="btn ghost" disabled={!items.length} onClick={sendGroup}>
+            <MessageCircle size={16} /> <span className="hide-sm">Envoyer au groupe</span>
+          </button>
+          <button className="btn ghost" disabled={exporting || !items.length} onClick={exportPdf}>
+            <FileDown size={16} /> <span className="hide-sm">{exporting ? 'Export…' : 'PDF'}</span>
+          </button>
+        </div>
+      )} />
       <MissionTabs />
 
       <div className="week-bar">
@@ -165,29 +168,30 @@ const [filter, setFilter] = useState(params.get('filter') || 'all');
             </div>
             {canManage && d.phone && (
               <a className="btn ghost sm" style={{ marginLeft: 'auto' }} target="_blank" rel="noopener noreferrer"
-                 href={waLink(d.phone, dayMessage(d.name, date, d.items.filter((m) => m.status !== 'cancelled')))}>
+                 href={waLink(d.phone, dayMessage(d.name, date, d.items))}>
                 <MessageCircle size={14} /> Envoyer sa journée
               </a>
             )}
           </div>
 
-          <table>
+          <table className="rt">
             <tbody>
               {d.items.map((m) => (
                 <tr key={m.id} className={m.live === 'late' ? 'row-late' : m.needs_control ? 'row-warn' : ''}>
-                  <td style={{ width: 120 }}>
+                  <td data-label="Horaire" style={{ width: 120 }}>
                     <strong>{hmOf(m.starts_at)}</strong> → {hmOf(m.ends_at)}
                     {m.starts_at.slice(0, 10) !== m.ends_at.slice(0, 10) && <><br /><small className="muted">multi-jours</small></>}
                   </td>
-                  <td>
-                    <strong>{m.title}</strong><br />
+                  <td data-label="Mission">
+                    <strong>{m.title}</strong>
+                    {m.driver_note && <span className="muted"> · {m.driver_note}</span>}<br />
                     <small className="muted">
                       {m.reference} · Bus {m.bus_plate}{m.client_name ? ` · ${m.client_name}` : ''}
                       {m.pickup_place || m.destination ? ` · ${[m.pickup_place, m.destination].filter(Boolean).join(' → ')}` : ''}
                     </small>
                     {m.controlled && m.control_note && <div className="muted" style={{ fontSize: 12 }}>« {m.control_note} »</div>}
                   </td>
-                  <td>
+                  <td data-label="Statut">
                     <MissionBadges m={m} now={now} />
                     {m.controlled && <div><small className="muted">{m.controlled_by_name} · {fmtDateTime(m.controlled_at)}</small></div>}
                   </td>
@@ -204,10 +208,10 @@ const [filter, setFilter] = useState(params.get('filter') || 'all');
                                 onClick={() => done(m)}><Check size={14} /> Effectuée</button>
                       )}
                       {canManage && m.live === 'late' && (
-  <button className="btn danger sm" onClick={() => open({ mode: 'notice', id: m.id, kind: 'late' })}>
-    <BellRing size={14} /> Relancer
-  </button>
-)}
+                        <button className="btn danger sm" onClick={() => open({ mode: 'notice', id: m.id, kind: 'late' })}>
+                          <BellRing size={14} /> Relancer
+                        </button>
+                      )}
                       {canControl && <button className="btn ghost sm" onClick={() => open({ mode: 'control', id: m.id })}>Contrôler…</button>}
                       <button className="btn ghost sm" onClick={() => open({ mode: 'detail', id: m.id })}>Détails</button>
                     </div>

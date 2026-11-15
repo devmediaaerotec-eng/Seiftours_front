@@ -151,7 +151,7 @@ export default function ClientsPage() {
   const canManage = can('missions.manage');
   const [showArchived, setShowArchived] = useState(false);
   const [q, setQ] = useState('');
-  const [modal, setModal] = useState(null); // { type: 'form' | 'invite', client? }
+  const [modal, setModal] = useState(null);
 
   const { data, isLoading, error } = useClients(showArchived);
   const del = useDeleteClient();
@@ -177,12 +177,20 @@ export default function ClientsPage() {
   return (
     <>
       <PageHeader title="Clients" action={canManage && (
-        <button className="btn" onClick={() => setModal({ type: 'form' })}><Plus size={16} /> Nouveau client</button>
+        <button className="btn" onClick={() => setModal({ type: 'form' })}>
+          <Plus size={16} /> Nouveau client
+        </button>
       )} />
 
-      <div className="filters wrap">
-        <input placeholder="Nom, contact, téléphone, email…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <label className="chk" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+      {/* Search + filter: stack on mobile, row on desktop */}
+      <div className="filters clients-filters">
+        <input
+          type="search"
+          placeholder="Nom, contact, téléphone, email…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <label className="chk clients-filter-archived">
           <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
           Afficher les archivés
         </label>
@@ -190,27 +198,33 @@ export default function ClientsPage() {
 
       {error && <div className="alert bad">{error.message}</div>}
 
-      <div className="card">
-        <table>
+      <div className="card clients-card">
+        <table className="clients-table">
           <thead>
-            <tr><th>Client</th><th>Contact</th><th>Missions</th><th>Espace client</th><th /></tr>
+            <tr>
+              <th>Client</th>
+              <th>Contact</th>
+              <th>Missions</th>
+              <th>Espace client</th>
+              <th className="col-actions" aria-label="Actions" />
+            </tr>
           </thead>
           <tbody>
             {items.map((c) => {
               const inv = INVITE[c.invite_state] ?? INVITE.none;
               return (
-                <tr key={c.id} style={c.is_active ? undefined : { opacity: 0.55 }}>
-                  <td>
+                <tr key={c.id} className={c.is_active ? '' : 'is-archived'}>
+                  <td data-label="Client">
                     <strong>{c.name}</strong>{!c.is_active && <> <span className="badge muted">Archivé</span></>}
                     {c.contact_name && <><br /><small className="muted">{c.contact_name}</small></>}
                   </td>
-                  <td>
+                  <td data-label="Contact">
                     {c.phone || '—'}
                     {c.email && <><br /><small className="muted">{c.email}</small></>}
                   </td>
-                  <td>{c.missions_count}</td>
-                  <td><span className={`badge ${inv.cls}`}>{inv.label}</span></td>
-                  <td>
+                  <td data-label="Missions">{c.missions_count}</td>
+                  <td data-label="Espace client"><span className={`badge ${inv.cls}`}>{inv.label}</span></td>
+                  <td className="col-actions">
                     {canManage && (
                       <div className="table-actions">
                         {c.is_active ? (
@@ -220,8 +234,12 @@ export default function ClientsPage() {
                                 <MailPlus size={14} /> Inviter
                               </button>
                             )}
-                            <button className="btn ghost sm" onClick={() => setModal({ type: 'form', client: c })}><Pencil size={14} /> Modifier</button>
-                            <button className="btn ghost sm" disabled={del.isPending} onClick={() => archive(c)}><Archive size={14} /></button>
+                            <button className="btn ghost sm" onClick={() => setModal({ type: 'form', client: c })}>
+                              <Pencil size={14} /> Modifier
+                            </button>
+                            <button className="btn ghost sm" disabled={del.isPending} onClick={() => archive(c)} aria-label="Archiver">
+                              <Archive size={14} />
+                            </button>
                           </>
                         ) : (
                           <button className="btn ghost sm" disabled={restore.isPending}
