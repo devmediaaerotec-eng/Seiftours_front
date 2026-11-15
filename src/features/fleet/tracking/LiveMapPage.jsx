@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
 import {
-  Activity, AlertTriangle, ArrowRight, CheckCircle2, Clock, Gauge, MapPin, Maximize2, Phone,
+  Activity, AlertTriangle, ArrowRight, CheckCircle2, Clock, Gauge, Maximize2, Phone,
   Route as RouteIcon, Search, User, X,
 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { assetUrl, fmtRange } from '@/lib/format';
-import { BUS_TYPE, MISSION_STATUS } from '../shared/status';
+import { MISSION_STATUS } from '../shared/status';
 import { useBusStats, useDayStats, useLive, useTrack } from './hooks';
 import './live.css';
 
@@ -61,6 +60,28 @@ const tripText = (m) => [m?.pickup_place, m?.destination].filter(Boolean);
 
 const BUS_PATH = 'M4 16c0 .9.4 1.7 1 2.2V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.8c.6-.5 1-1.3 1-2.2V6c0-3-3.1-4-8-4S4 3 4 6v10Zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3ZM6 11V6h12v5H6Z';
 
+/* ------------------------------------------------------------------ taille réelle de la page */
+
+/**
+ * Les points de rupture CSS se basent sur la largeur de l'écran, mais cette page vit à côté d'un
+ * menu latéral : la zone utile est bien plus étroite que l'écran. On mesure donc la page elle-même.
+ *   lg ≥ 1120 px : liste | carte | détails      md ≥ 720 px : liste | carte (+ tiroir)      sm : empilé
+ */
+function usePageSize() {
+  const ref = useRef(null);
+  const [size, setSize] = useState('lg');
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const apply = (w) => setSize(w >= 1120 ? 'lg' : w >= 720 ? 'md' : 'sm');
+    apply(el.getBoundingClientRect().width);
+    const ro = new ResizeObserver(([e]) => apply(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, size];
+}
+
 /** Petit bus de profil, utilisé en vignette et dans la fiche */
 function BusArt({ color = '#0a7c95' }) {
   return (
@@ -106,6 +127,8 @@ const busIcon = (b, selected) => {
   return iconCache.get(key);
 };
 
+/* ------------------------------------------------------------------ aides Leaflet */
+
 /** Cadre la carte sur la flotte au premier chargement, puis à chaque clic sur « Toute la flotte » (trigger) */
 function Fit({ points, trigger }) {
   const map = useMap();
@@ -113,10 +136,10 @@ function Fit({ points, trigger }) {
   useEffect(() => {
     if (done.current || points.length === 0) return;
     done.current = true;
-    map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 12 });
+    map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 12 });
   }, [points, map]);
   useEffect(() => {
-    if (trigger > 0 && points.length > 0) map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 12 });
+    if (trigger > 0 && points.length > 0) map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 12 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trigger]);
   return null;
@@ -128,12 +151,41 @@ function Focus({ target }) {
   }, [target, map]);
   return null;
 }
-/** Le conteneur change de taille à la sélection : Leaflet doit le recalculer */
-function Resize({ dep }) {
+
+/**
+ * Leaflet ne sait pas quand son conteneur change de taille (changement de disposition, menu replié,
+ * clavier mobile, rotation…) : la carte restait alors « coincée » avec des tuiles grises ou tronquées.
+ * Un ResizeObserver la recalcule à chaque changement.
+ */
+function AutoResize() {
   const map = useMap();
-  useEffect(() => { const t = setTimeout(() => map.invalidateSize(), 60); return () => clearTimeout(t); }, [dep, map]);
+  useEffect(() => {
+    const el = map.getContainer();
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+    });
+    ro.observe(el);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  }, [map]);
   return null;
 }
+
+/** Molette = zoom seulement après un clic sur la carte : sinon on ne peut plus faire défiler la page dessus */
+function WheelGuard() {
+  const map = useMap();
+  useEffect(() => {
+    map.scrollWheelZoom.disable();
+    const on = () => map.scrollWheelZoom.enable();
+    const off = () => map.scrollWheelZoom.disable();
+    map.on('focus', on); map.on('blur', off); map.on('mouseout', off);
+    return () => { map.off('focus', on); map.off('blur', off); map.off('mouseout', off); };
+  }, [map]);
+  return null;
+}
+
+/* ------------------------------------------------------------------ interface */
 
 /** Bandeau d'indicateurs du jour */
 function Kpis({ summary, totals }) {
@@ -215,7 +267,7 @@ function Panel({ b, onClose, hours, setHours, track, trackCount, age, stats }) {
 
   return (
     <>
-      <button className="lm-close" onClick={onClose} aria-label="Fermer"><X size={16} /></button>
+      <button className="lm-close" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
       <h2>Détails du véhicule</h2>
       <div className="lm-hero"><BusImage b={b} large /></div>
 
@@ -297,13 +349,12 @@ function Panel({ b, onClose, hours, setHours, track, trackCount, age, stats }) {
           </dl>
         </div>
       )}
-
-    
     </>
   );
 }
 
 export default function LiveMapPage() {
+  const [pageRef, size] = usePageSize();
   const [auto, setAuto] = useState(true);
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
@@ -339,6 +390,14 @@ export default function LiveMapPage() {
   };
   const close = () => { setSelectedId(null); setHours(0); };
 
+  // Échap ferme les détails
+  useEffect(() => {
+    if (!selectedId) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedId]);
+
   const counts = {
     all: summary?.total,
     moving: (summary?.moving ?? 0) + (summary?.speeding ?? 0),
@@ -350,7 +409,7 @@ export default function LiveMapPage() {
   const kmOf = (b) => (day.data ? (dayBuses[b.id]?.distance_km ?? 0) : null);
 
   return (
-    <>
+    <div className="lm-page" ref={pageRef} data-size={size}>
       {error && <div className="alert bad">Impossible de joindre le serveur : {error.message}. Nouvelle tentative automatique.</div>}
 
       <Kpis summary={summary} totals={day.data?.totals} />
@@ -393,7 +452,8 @@ export default function LiveMapPage() {
             <TileLayer attribution={TILE_ATTR} url={TILE_URL} />
             <Fit points={allPoints} trigger={fitKey} />
             <Focus target={focus} />
-            <Resize dep={selectedId} />
+            <AutoResize />
+            <WheelGuard />
             {hours > 0 && trackPoints.length > 1 && (
               <>
                 <Polyline positions={trackPoints} pathOptions={{ color: '#ffffff', weight: 8, opacity: 0.9 }} />
@@ -407,11 +467,12 @@ export default function LiveMapPage() {
           </MapContainer>
         </div>
 
-        <aside className="lm-panel lm-thin" aria-live="polite">
+        <aside className="lm-panel lm-thin">
+          {selected && <span className="lm-grab" aria-hidden="true" />}
           <Panel b={selected} onClose={close} hours={hours} setHours={setHours} track={track}
                  trackCount={trackPoints.length} age={age} stats={busStats.data} />
         </aside>
       </div>
-    </>
+    </div>
   );
 }
