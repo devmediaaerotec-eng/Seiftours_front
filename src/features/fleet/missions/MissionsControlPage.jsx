@@ -104,16 +104,16 @@ export default function MissionsControlPage() {
 
   return (
     <>
-      <PageHeader title="Missions" action={canManage && (
-        <div className="row-tools">
-          <button className="btn ghost" disabled={!items.length} onClick={sendGroup}>
-            <MessageCircle size={16} /> <span className="hide-sm">Envoyer au groupe</span>
-          </button>
-          <button className="btn ghost" disabled={exporting || !items.length} onClick={exportPdf}>
-            <FileDown size={16} /> <span className="hide-sm">{exporting ? 'Export…' : 'PDF'}</span>
-          </button>
-        </div>
-      )} />
+     <PageHeader title="Missions" action={canManage && (
+  <div className="mh-actions">
+    <button className="btn ghost sm" disabled={!items.length} onClick={sendGroup}>
+      <MessageCircle size={15} /><span className="mh-txt">Groupe</span>
+    </button>
+    <button className="btn ghost sm" disabled={exporting || !items.length} onClick={exportPdf}>
+      <FileDown size={15} /><span className="mh-txt">{exporting ? '…' : 'PDF'}</span>
+    </button>
+  </div>
+)} />
       <MissionTabs />
 
       <div className="week-bar">

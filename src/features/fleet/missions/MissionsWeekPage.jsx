@@ -87,34 +87,40 @@ export default function MissionsWeekPage() {
 
   return (
     <>
-      <PageHeader title="Missions" action={(
-        <div className="row-tools">
-          {canManage && (
-            <button className="btn ghost" disabled={exporting || !data?.missions?.length} onClick={exportPdf}>
-              <FileDown size={16} /> {exporting ? 'Export…' : 'PDF'}
-            </button>
-          )}
-          {canManage && (
-            <button className="btn ghost" onClick={() => setShowProgram(true)}>
-              <Send size={16} /> Envoyer le programme{data?.to_send ? ` (${data.to_send})` : ''}
-            </button>
-          )}
-          {canManage && <button className="btn" onClick={() => open({ mode: 'new', defaults: { date: today } })}><Plus size={16} /> Nouvelle mission</button>}
-        </div>
-      )} />
+    <PageHeader title="Missions" action={(
+  <div className="mh-actions">
+    {canManage && (
+      <button className="btn ghost sm" disabled={exporting || !data?.missions?.length} onClick={exportPdf} aria-label="Exporter en PDF">
+        <FileDown size={15} /><span className="mh-txt">{exporting ? '…' : 'PDF'}</span>
+      </button>
+    )}
+    {canManage && (
+      <button className="btn ghost sm" onClick={() => setShowProgram(true)}>
+        <Send size={15} /><span className="mh-txt">Programme{data?.to_send ? ` (${data.to_send})` : ''}</span>
+      </button>
+    )}
+    {canManage && (
+      <button className="btn sm" onClick={() => open({ mode: 'new', defaults: { date: today } })}>
+        <Plus size={15} /><span className="mh-txt">Nouvelle<span className="mh-long"> mission</span></span>
+      </button>
+    )}
+  </div>
+)} />
       <MissionTabs />
 
-      <div className="week-bar">
-        <button className="btn ghost sm" onClick={() => go(addDays(start, -7))} aria-label="Semaine précédente"><ChevronLeft size={16} /></button>
-        <button className="btn ghost sm" onClick={() => go(mondayOf(today))}>Cette semaine</button>
-        <button className="btn ghost sm" onClick={() => go(addDays(start, 7))} aria-label="Semaine suivante"><ChevronRight size={16} /></button>
-        <input type="date" style={{ width: 'auto' }} value={start} onChange={(e) => e.target.value && go(mondayOf(e.target.value))} />
-        <span className="label cap">{label}</span>
-        <div className="seg" style={{ marginLeft: 'auto' }}>
-          <button className={rows === 'drivers' ? 'on' : ''} onClick={() => setRows('drivers')}>Par chauffeur</button>
-          <button className={rows === 'buses' ? 'on' : ''} onClick={() => setRows('buses')}>Par bus</button>
-        </div>
-      </div>
+  <div className="mh-bar">
+  <div className="mh-nav">
+    <button className="btn ghost sm icon" onClick={() => go(addDays(start, -7))} aria-label="Semaine précédente"><ChevronLeft size={16} /></button>
+    <button className="btn ghost sm" onClick={() => go(mondayOf(today))}>Cette semaine</button>
+    <button className="btn ghost sm icon" onClick={() => go(addDays(start, 7))} aria-label="Semaine suivante"><ChevronRight size={16} /></button>
+    <input className="mh-date" type="date" value={start} onChange={(e) => e.target.value && go(mondayOf(e.target.value))} />
+  </div>
+  <span className="mh-label">{label}</span>
+  <div className="seg mh-seg">
+    <button className={rows === 'drivers' ? 'on' : ''} onClick={() => setRows('drivers')}>Par chauffeur</button>
+    <button className={rows === 'buses' ? 'on' : ''} onClick={() => setRows('buses')}>Par bus</button>
+  </div>
+</div>
 
       {error && <div className="alert bad">{error.message}</div>}
       {isLoading && <div className="center">Chargement…</div>}

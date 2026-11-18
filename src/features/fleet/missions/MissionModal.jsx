@@ -4,9 +4,10 @@ import ControlForm from './ControlForm';
 import MissionDetail from './MissionDetail';
 import MissionForm from './MissionForm';
 import NoticeForm from './NoticeForm';
-import MissionBatchForm from './MissionBatchForm';
-import './missions.css';
+ import './missions.css';
+import MissionWizard from './MissionWizard';
 
+ 
 const TITLES = {
   detail: 'Mission', new: 'Nouvelle mission', edit: 'Modifier la mission',
   control: 'Contrôle de la mission',
@@ -35,8 +36,8 @@ export default function MissionModal({ target, onClose }) {
       )}
 
       {view.mode === 'new' && !view.template && (
-        <MissionBatchForm defaults={view.defaults} onDone={onClose} onCancel={onClose} />
-      )}
+  <MissionWizard defaults={view.defaults} onDone={onClose} onCancel={onClose} />
+)}
       {view.mode === 'new' && view.template && (
         <MissionForm template={view.template} onDone={(m) => toDetail(m.id)} onCancel={onClose} />
       )}

@@ -63,6 +63,57 @@ function Section({ n, title, hint, children }) {
   );
 }
 
+/* ------------------------------------------------------- type de trajet */
+
+const MODES = [['aller', 'Aller'], ['retour', 'Retour'], ['both', 'Aller & retour']];
+
+function modeOf(legs = []) {
+  if (legs.length === 1 && legs[0].leg === 'aller') return 'aller';
+  if (legs.length === 1 && legs[0].leg === 'retour') return 'retour';
+  if (legs.length === 2 && legs[0].leg === 'aller' && legs[1].leg === 'retour') return 'both';
+  return 'custom';
+}
+
+/** Retour pré-rempli depuis l'aller : même jour 16:00–18:00, trajet inversé, mêmes chauffeurs et bus. */
+function makeReturn(first) {
+  const day = (first.starts_at || '').slice(0, 10);
+  return {
+    leg: 'retour',
+    starts_at: day ? `${day}T16:00` : '', ends_at: day ? `${day}T18:00` : '',
+    pickup_place: first.destination || '', destination: first.pickup_place || '',
+    assignments: (first.assignments ?? []).map((a) => ({
+      ...blank(), driver_id: a.driver_id, alt_driver_id: a.alt_driver_id, bus_id: a.bus_id, note: a.note,
+    })),
+  };
+}
+
+function TripModeSwitch({ watch, getValues, replace }) {
+  const mode = modeOf(watch('legs'));
+
+  const change = (m) => {
+    if (m === mode) return;
+    const legs = getValues('legs');
+    const first = legs[0];
+    if (m === 'both') {
+      const back = legs[1]?.leg === 'retour' ? legs[1] : makeReturn(first);
+      replace([{ ...first, leg: 'aller' }, { ...back, leg: 'retour' }]);
+    } else {
+      replace([{ ...first, leg: m }]);
+    }
+  };
+
+  return (
+    <div className="trip-switch" role="tablist" aria-label="Type de trajet">
+      {MODES.map(([k, label]) => (
+        <button key={k} type="button" role="tab" aria-selected={mode === k}
+                className={mode === k ? 'on' : ''} onClick={() => change(k)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- client */
 
 function ClientPicker({ register, errors, setValue, getValues }) {
@@ -122,28 +173,68 @@ function ClientPicker({ register, errors, setValue, getValues }) {
   );
 }
 
+/* ----------------------------------------------------- rappel du client */
+
+function ClientBar({ watch }) {
+  const clients = useClients();
+  const id = watch('client_id');
+  const title = (watch('title') || '').trim();
+  const client = (clients.data?.items ?? []).find((c) => String(c.id) === String(id));
+
+  if (!client && !title) {
+    return <div className="client-bar empty">Aucun client sélectionné (section 1).</div>;
+  }
+  return (
+    <div className="client-bar">
+      <span className="tag">Client</span>
+      <strong>{client?.name ?? 'Sans client'}</strong>
+      {title && <span className="muted">· {title}</span>}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------- zone de ramassage */
 
-function NoteField({ j, register, name, a, watch }) {
+ function NoteField({ j, register, name, a, watch }) {
   const value = watch(name(`assignments.${j}.note`));
   const [open, setOpen] = useState(!!value);
   if (!open) {
     return (
-      <button type="button" className="btn ghost sm" style={{ alignSelf: 'end' }} onClick={() => setOpen(true)}>
-        <Plus size={14} /> Ajouter une zone de ramassage
-      </button>
+      <div className="full">
+        <button type="button" className="link-btn" onClick={() => setOpen(true)}>+ Zone de ramassage</button>
+      </div>
     );
   }
   return (
-    <Field label="Zone de ramassage" error={a?.note} hint="Affichée à côté du nom du chauffeur dans les messages.">
-      <input placeholder="Ex. Monastir" maxLength={190} {...register(name(`assignments.${j}.note`))} />
-    </Field>
+    <div className="full">
+      <Field label="Zone de ramassage" error={a?.note}>
+        <input placeholder="Ex. Monastir" maxLength={190} {...register(name(`assignments.${j}.note`))} />
+      </Field>
+    </div>
+  );
+}
+/* ------------------------------------ trajet commun (aller et retour inversé) */
+
+function BothRoute({ register, getValues, setValue }) {
+  const syncRoute = () => {
+    setValue('legs.1.pickup_place', getValues('legs.0.destination') || '');
+    setValue('legs.1.destination', getValues('legs.0.pickup_place') || '');
+  };
+  return (
+    <div className="form-grid" style={{ marginBottom: 12 }}>
+      <Field label="Lieu de prise en charge"  >
+        <input {...register('legs.0.pickup_place', { onChange: syncRoute })} />
+      </Field>
+      <Field label="Destination">
+        <input {...register('legs.0.destination', { onChange: syncRoute })} />
+      </Field>
+    </div>
   );
 }
 
 /* ----------------------------------------------------------------- étape */
 
-function LegCard({ index, control, register, errors, watch, setValue, getValues, options, onRemove, canRemove, repeating }) {
+function LegCard({ index, control, register, errors, watch, setValue, getValues, options, onRemove, canRemove, repeating, lockLeg, compact }) {
   const { fields, append, remove, replace } = useFieldArray({ control, name: `legs.${index}.assignments` });
   const name = (k) => `legs.${index}.${k}`;
   const e = errors.legs?.[index];
@@ -152,11 +243,23 @@ function LegCard({ index, control, register, errors, watch, setValue, getValues,
   const busy = useAvailability(starts, ends).data ?? {};
   const drivers = options?.drivers ?? [];
   const buses = options?.buses ?? [];
+  const legType = watch(name('leg'));
 
   const onStart = (ev) => {
     const v = ev.target.value;
     const end = getValues(name('ends_at'));
     if (v && (!end || end <= v)) setValue(name('ends_at'), addMinutes(v, 120), { shouldValidate: true });
+
+    // Aller modifié : le retour ne doit pas rester avant lui
+    if (index === 0 && lockLeg) {
+      const day = v.slice(0, 10);
+      (getValues('legs') ?? []).slice(1).forEach((l, k) => {
+        if (l.leg === 'retour' && l.starts_at && l.starts_at.slice(0, 10) < day) {
+          setValue(`legs.${k + 1}.starts_at`, `${day}${l.starts_at.slice(10)}`);
+          setValue(`legs.${k + 1}.ends_at`, `${day}${(l.ends_at || '').slice(10)}`);
+        }
+      });
+    }
   };
 
   const onDriver = (j) => (ev) => {
@@ -186,34 +289,52 @@ function LegCard({ index, control, register, errors, watch, setValue, getValues,
   };
 
   return (
-    <div className="card leg-card">
+    <div className={`card leg-card ${legType === 'retour' ? 'is-retour' : ''}`}>
       <div className="leg-head">
-        <select style={{ width: 'auto' }} {...register(name('leg'))}>
-          {Object.entries(LEG_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select>
-        <span className="muted">Étape {index + 1}</span>
-        {canRemove && (
+        {lockLeg ? (
+          <span className={`leg-badge ${legType === 'retour' ? 'retour' : ''}`}>{LEG_LABEL[legType]}</span>
+        ) : (
+          <select style={{ width: 'auto' }} {...register(name('leg'))}>
+            {Object.entries(LEG_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+        )}
+        {!lockLeg && <span className="muted">Étape {index + 1}</span>}
+        {canRemove && !lockLeg && (
           <button type="button" className="btn ghost sm" style={{ marginLeft: 'auto' }} onClick={onRemove}>
             <Trash2 size={14} /> <span className="hide-sm">Supprimer l'étape</span>
           </button>
         )}
       </div>
 
-      <div className="form-grid">
-        <Field label="Départ *" error={e?.starts_at}>
-          <input type="datetime-local" {...register(name('starts_at'), { required: 'Champ requis', onChange: onStart })} />
-        </Field>
-        <Field label="Arrivée *" error={e?.ends_at}>
-          <input type="datetime-local" {...register(name('ends_at'), {
-            required: 'Champ requis',
-            validate: (v) => !getValues(name('starts_at')) || v > getValues(name('starts_at')) || "L'arrivée doit être après le départ",
-          })} />
-        </Field>
-        <Field label="Lieu de prise en charge" error={e?.pickup_place}><input {...register(name('pickup_place'))} /></Field>
-        <Field label="Destination" error={e?.destination}><input {...register(name('destination'))} /></Field>
-      </div>
+ <div className="dt-grid">
+  <Field label="Départ *" error={e?.starts_at}>
+    <input type="datetime-local" {...register(name('starts_at'), {
+      required: 'Champ requis',
+      onChange: onStart,
+      validate: (v) => index === 0 || legType !== 'retour' || !getValues('legs.0.starts_at') || v >= getValues('legs.0.starts_at')
+        || "Le retour ne peut pas commencer avant l'aller",
+    })} />
+  </Field>
+  <Field label="Arrivée *" error={e?.ends_at}>
+    <input type="datetime-local" {...register(name('ends_at'), {
+      required: 'Champ requis',
+      validate: (v) => !getValues(name('starts_at')) || v > getValues(name('starts_at')) || "L'arrivée doit être après le départ",
+    })} />
+  </Field>
+</div>
 
-      <h4 style={{ margin: '14px 0 0', fontSize: 14 }}>Bus et chauffeurs ({fields.length})</h4>
+{!compact && (
+  <div className="dt-grid" style={{ marginTop: 10 }}>
+    <Field label="Lieu de prise en charge" error={e?.pickup_place}><input {...register(name('pickup_place'))} /></Field>
+    <Field label="Destination" error={e?.destination}><input {...register(name('destination'))} /></Field>
+  </div>
+)}
+
+<div className="sub-title">Bus et chauffeurs</div>
+
+      <h4 style={{ margin: '14px 0 0', fontSize: 14 }}>
+        {compact ? `${LEG_LABEL[legType]} : bus et chauffeurs` : 'Bus et chauffeurs'} ({fields.length})
+      </h4>
       {fields.map((f, j) => {
         const a = e?.assignments?.[j];
         const custom = watch(name(`assignments.${j}.custom`));
@@ -263,6 +384,7 @@ function LegCard({ index, control, register, errors, watch, setValue, getValues,
               </Field>
 
               {repeating && (
+                <div className="full">
                 <Field label="Alterne avec (1 jour sur 2)" error={a?.alt_driver_id} hint="Optionnel : « lotfi ou ayoub ».">
                   <select {...register(name(`assignments.${j}.alt_driver_id`), {
                     validate: (v) => !v || v !== getValues(name(`assignments.${j}.driver_id`)) || 'Doit être un autre chauffeur',
@@ -271,42 +393,29 @@ function LegCard({ index, control, register, errors, watch, setValue, getValues,
                     {drivers.map((d) => <option key={d.id} value={String(d.id)}>{d.full_name}</option>)}
                   </select>
                 </Field>
+                </div>
               )}
 
               <NoteField j={j} register={register} name={name} a={a} watch={watch} />
             </div>
-
-            {fields.length > 1 && (
-              <>
-                <label className="chk assign-toggle">
-                  <input type="checkbox" {...register(name(`assignments.${j}.custom`), { onChange: onCustom(j) })} />
-                  Horaire différent pour ce chauffeur (relais)
-                </label>
-                {custom && (
-                  <div className="assign-custom">
-                    <Field label="Début de ce chauffeur" error={a?.starts_at}>
-                      <input type="datetime-local" {...register(name(`assignments.${j}.starts_at`), { required: 'Champ requis' })} />
-                    </Field>
-                    <Field label="Fin de ce chauffeur" error={a?.ends_at}>
-                      <input type="datetime-local" {...register(name(`assignments.${j}.ends_at`), {
-                        required: 'Champ requis',
-                        validate: (v) => v > getValues(name(`assignments.${j}.starts_at`)) || 'La fin doit être après le début',
-                      })} />
-                    </Field>
-                  </div>
-                )}
-              </>
-            )}
+ {fields.length > 1 && (
+  <div className="assign-card-head">
+    <strong>Chauffeur {j + 1}</strong>
+    <button type="button" className="icon-btn" aria-label="Retirer" onClick={() => remove(j)}>
+      <Trash2 size={15} />
+    </button>
+  </div>
+)}
           </div>
         );
       })}
 
-      <div className="row-tools" style={{ marginTop: 10 }}>
-        <button type="button" className="btn ghost sm" onClick={() => append(blank())}><Plus size={14} /> Ajouter un bus / chauffeur</button>
-        {index > 0 && (
-          <button type="button" className="btn ghost sm" onClick={copyFromFirst}><Copy size={14} /> Mêmes chauffeurs que l'aller</button>
-        )}
-      </div>
+   <div className="row-tools" style={{ marginTop: 6 }}>
+  <button type="button" className="link-btn" onClick={() => append(blank())}>+ Ajouter un chauffeur</button>
+  {index > 0 && (
+    <button type="button" className="link-btn" onClick={copyFromFirst}>Copier les chauffeurs de l'aller</button>
+  )}
+</div>
     </div>
   );
 }
@@ -397,7 +506,8 @@ export default function MissionBatchForm({ defaults, onDone, onCancel }) {
   const {
     register, handleSubmit, watch, setValue, getValues, setError, control, formState: { errors },
   } = useForm({ defaultValues: initial(defaults) });
-  const { fields, append, remove } = useFieldArray({ control, name: 'legs' });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'legs' });
+  const legMode = modeOf(watch('legs'));
   const repeating = (watch('repeat_days') ?? []).length > 0;
 
   // Récapitulatif : nombre de missions qui seront créées
@@ -414,7 +524,7 @@ export default function MissionBatchForm({ defaults, onDone, onCancel }) {
     const last = legs[legs.length - 1];
     const day = (last.starts_at || '').slice(0, 10);
     append({
-      leg: legs.length === 1 ? 'retour' : 'other',
+      leg: 'other',
       starts_at: day ? `${day}T16:00` : '', ends_at: day ? `${day}T18:00` : '',
       pickup_place: last.destination, destination: last.pickup_place, // trajet inversé
       assignments: [blank()],
@@ -468,40 +578,53 @@ export default function MissionBatchForm({ defaults, onDone, onCancel }) {
   });
 
   return (
-    <form onSubmit={submit} noValidate>
-      <Section n="1" title="Mission" hint="Client, type et consignes communes à tous les chauffeurs.">
-        <div className="form-grid">
+   <form onSubmit={submit} noValidate className="ms-form">
+      <Section n="1" title="Mission" >
+        <div className="row-3">
           <ClientPicker register={register} errors={errors} setValue={setValue} getValues={getValues} />
           <Field label="Type" error={errors.mission_type}>
             <select {...register('mission_type')}>
               {Object.entries(MISSION_TYPE).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </Field>
-          <Field label="Intitulé *" error={errors.title} hint="Ex. Mitech — transport du personnel">
-            <input {...register('title', {
+          <Field label="Intitulé *" error={errors.title}>
+            <input placeholder="Ex. Mitech — personnel" {...register('title', {
               required: 'Champ requis',
               validate: (v) => v.trim() !== '' || 'Champ requis',
               maxLength: { value: 190, message: '190 caractères maximum' },
             })} />
           </Field>
-          <Field label="Consignes pour les chauffeurs" className="span-2" error={errors.notes} hint="Reprises dans les messages WhatsApp.">
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <Field label="Consignes pour les chauffeurs" error={errors.notes}  >
             <textarea rows="2" {...register('notes')} />
           </Field>
         </div>
       </Section>
 
-      <Section n="2" title="Étapes" hint="Aller, retour… Chaque étape a ses horaires, ses bus et ses chauffeurs.">
-        {fields.map((f, i) => (
-          <LegCard key={f.id} index={i} control={control} register={register} errors={errors} watch={watch}
-                   setValue={setValue} getValues={getValues} options={options.data}
-                   canRemove={fields.length > 1} onRemove={() => remove(i)} repeating={repeating} />
-        ))}
-        <button type="button" className="btn ghost" onClick={addLeg}>
-          <Plus size={16} /> Ajouter une étape ({fields.length === 1 ? 'retour' : 'autre'})
-        </button>
+      <Section n="2" title="Étapes"  >
+        <ClientBar watch={watch} />
+        <TripModeSwitch watch={watch} getValues={getValues} replace={replace} />
+
+        {legMode === 'both' && <BothRoute register={register} getValues={getValues} setValue={setValue} />}
+
+        <div className={legMode === 'both' ? 'both-row' : undefined}>
+          {fields.map((f, i) => (
+            <LegCard key={f.id} index={i} control={control} register={register} errors={errors} watch={watch}
+                     setValue={setValue} getValues={getValues} options={options.data}
+                     canRemove={fields.length > 1} onRemove={() => remove(i)} repeating={repeating}
+                     lockLeg={legMode !== 'custom'} compact={legMode === 'both'} />
+          ))}
+        </div>
+
+        {legMode === 'custom' && (
+          <button type="button" className="btn ghost" style={{ marginTop: 12 }} onClick={addLeg}>
+            <Plus size={16} /> Ajouter une étape
+          </button>
+        )}
       </Section>
 
-      <Section n="3" title="Répétition" hint="Laisser vide pour une mission unique.">
+      <Section n="3" title="Répétition"  >
         <RepeatPicker watch={watch} setValue={setValue} getValues={getValues} register={register} errors={errors} />
       </Section>
 

@@ -54,16 +54,16 @@ export default function MissionsListPage() {
 
   return (
     <>
-      <PageHeader title="Missions" action={canManage && (
-        <div className="row-tools">
-          <button className="btn ghost" disabled={exporting || !items.length} onClick={exportPdf}>
-            <FileDown size={16} /> <span className="hide-sm">{exporting ? 'Export…' : 'PDF'}</span>
-          </button>
-          <button className="btn" onClick={() => open({ mode: 'new', defaults: { date: todayYmd() } })}>
-            <Plus size={16} /> <span className="hide-sm">Nouvelle </span>mission
-          </button>
-        </div>
-      )} />
+   <PageHeader title="Missions" action={canManage && (
+  <div className="mh-actions">
+    <button className="btn ghost sm" disabled={exporting || !items.length} onClick={exportPdf}>
+      <FileDown size={15} /><span className="mh-txt">{exporting ? '…' : 'PDF'}</span>
+    </button>
+    <button className="btn sm" onClick={() => open({ mode: 'new', defaults: { date: todayYmd() } })}>
+      <Plus size={15} /><span className="mh-txt">Nouvelle<span className="mh-long"> mission</span></span>
+    </button>
+  </div>
+)} />
       <MissionTabs />
 
       <details className="filters-box" open={hasFilters}>
@@ -98,7 +98,7 @@ export default function MissionsListPage() {
             À contrôler
           </label>
           {hasFilters && (
-            <button className="btn ghost sm" onClick={() => { setSearch(''); setParams({}); }}>Réinitialiser</button>
+               <button type="button" className="btn ghost sm" onClick={() => { setSearch(''); setParams({}); }}>Réinitialiser</button>
           )}
         </div>
       </details>

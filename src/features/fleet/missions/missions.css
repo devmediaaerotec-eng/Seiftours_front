@@ -1,3 +1,7 @@
+/* =====================================================================
+   Missions : styles (mobile-first)
+   ===================================================================== */
+
 /* ---------- Base mobile ---------- */
 .ms-section input, .ms-section select, .ms-section textarea,
 .assign-card input, .assign-card select, .filters input, .filters select { font-size: 16px; min-height: 44px; }
@@ -5,30 +9,81 @@
 .btn.sm { min-height: 36px; }
 .hide-sm { display: inline; }
 
+/* ---------- Anti-débordement (plus de scroll horizontal) ---------- */
+.ms-form { overflow-x: clip; }
+.ms-form, .ms-section, .leg-card, .assign-card, .both-row > * { min-width: 0; }
+.ms-form input, .ms-form select, .ms-form textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.ms-form input[type="checkbox"], .ms-form input[type="radio"] { width: auto; min-height: 0; }
+
 /* ---------- Sections du formulaire ---------- */
-.ms-section { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; margin-bottom: 14px; background: #fff; }
-.ms-section-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.ms-section { border: 1px solid #e8edf3; border-radius: 16px; padding: 16px; margin-bottom: 14px; background: #fff; }
+.ms-section-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
 .ms-section-head h4 { margin: 0; font-size: 15px; }
 .ms-section-head p { margin: 2px 0 0; font-size: 12px; }
 .ms-step { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #0f766e; color: #fff;
   font-size: 13px; font-weight: 600; display: grid; place-items: center; }
 
-.form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .form-grid .span-2 { grid-column: auto; }
 
-/* ---------- Étapes et affectations ---------- */
-.leg-card { border: 1px solid #cbd5e1; border-left: 4px solid #0f766e; border-radius: 12px; padding: 12px; margin-bottom: 12px; background: #f8fafc; }
-.leg-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.assign-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-top: 10px; }
-.assign-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.assign-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.assign-custom { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 8px; }
+/* Section 1 : Client | Type | Intitulé sur une ligne */
+.row-3 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.row-3 .span-2 { grid-column: 1 / -1; }
+
+/* ---------- Sélecteur de trajet (segmenté) ---------- */
+.trip-switch { display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 3px; background: #f1f5f9;
+  border-radius: 10px; margin-bottom: 14px; max-width: 100%; }
+.trip-switch button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent;
+  font-size: 13px; font-weight: 500; color: #64748b; cursor: pointer; white-space: nowrap; }
+.trip-switch button.on { background: #fff; color: #0f766e; box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+
+/* ---------- Rappel du client ---------- */
+.client-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; margin-bottom: 12px;
+  border-radius: 10px; background: #f8fafc; font-size: 13px; }
+.client-bar .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.client-bar.empty { color: #94a3b8; }
+
+/* ---------- Étapes : Aller | Retour ---------- */
+.both-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+
+.leg-card { container-type: inline-size; border: 1px solid #e2e8f0; border-top: 3px solid #0f766e; border-radius: 14px;
+  padding: 14px; margin-bottom: 12px; background: #fff; }
+.leg-card.is-retour { border-top-color: #7c3aed; }
+.both-row .leg-card { margin-bottom: 0; }
+.leg-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.leg-badge { display: inline-block; padding: 3px 12px; border-radius: 999px; background: #ccfbf1; color: #0f766e;
+  font-size: 12px; font-weight: 600; }
+.leg-badge.retour { background: #ede9fe; color: #6d28d9; }
+
+/* Dates : 1 colonne si la carte est étroite, 2 si elle est large */
+.dt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.dt-grid input[type="datetime-local"] { font-size: 14px; min-height: 40px; padding: 0 8px; }
+@container (min-width: 460px) { .dt-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+.sub-title { margin: 16px 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: #94a3b8; }
+
+/* ---------- Affectations ---------- */
+.assign-card { border: 1px solid #eef2f6; border-radius: 12px; padding: 12px; margin-bottom: 8px; background: #f8fafc; }
+.assign-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.assign-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@container (min-width: 460px) { .assign-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.assign-grid > .full { grid-column: 1 / -1; }
+.assign-custom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 8px; }
 .assign-toggle { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; min-height: 36px; }
 .row-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 
+.link-btn { background: none; border: 0; padding: 4px 0; color: #0f766e; font-size: 13px; font-weight: 500;
+  cursor: pointer; text-align: left; }
+.link-btn:hover { text-decoration: underline; }
+.icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px;
+  background: transparent; color: #94a3b8; cursor: pointer; }
+.icon-btn:hover:not(:disabled) { background: #fee2e2; color: #b91c1c; }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+
 /* ---------- Répétition ---------- */
 .day-chip { min-width: 52px; min-height: 44px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 999px;
-  background: #fff; font-weight: 500; }
+  background: #fff; font-weight: 500; cursor: pointer; }
 .day-chip.on { background: #0f766e; color: #fff; border-color: #0f766e; }
 
 /* ---------- Récapitulatif ---------- */
@@ -79,10 +134,10 @@
 
 /* ---------- Tablette et plus ---------- */
 @media (min-width: 720px) {
-  .form-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .form-grid .span-2 { grid-column: 1 / -1; }
-  .assign-grid { grid-template-columns: 1fr 1fr; }
-  .assign-custom { grid-template-columns: 1fr 1fr; }
+  .row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .assign-custom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .detail-grid { grid-template-columns: 1fr 1fr; }
   .detail-grid .span-2 { grid-column: 1 / -1; }
   .detail-actions { display: flex; flex-wrap: wrap; }
@@ -91,4 +146,8 @@
   .filters.wrap form { grid-column: auto; }
   .modal-actions .btn { flex: none; }
   .prog-head .row-tools { width: auto; margin-left: auto !important; }
+}
+
+@media (min-width: 900px) {
+  .both-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
