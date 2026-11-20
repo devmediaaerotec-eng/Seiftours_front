@@ -461,7 +461,11 @@ export default function BookingDetail() {
               <Row label="Acompte prévu">{money(b.deposit_millimes)}</Row>
               <Row label="Déjà payé">{money(paid)}</Row>
               <Row label="Reste à payer"><span className="text-base font-semibold">{money(b.balance_due_millimes)}</span></Row>
+              {can('reports.read') && b.cost_millimes != null && <Row label="Prix fournisseur">{money(b.cost_millimes)}</Row>}
               {can('reports.read') && b.margin_millimes != null && <Row label="Marge">{money(b.margin_millimes)}</Row>}
+              {can('reports.read') && b.cost_millimes > 0 && (
+                <Row label="Marge appliquée">{Math.round((total / Number(b.cost_millimes) - 1) * 1000) / 10} %</Row>
+              )}
               {b.supplier_booking_ref && (
                 <Row label="Réf. fournisseur">
                   <button type="button" onClick={() => copy(b.supplier_booking_ref)} className="inline-flex items-center gap-1.5 hover:text-brand-700">

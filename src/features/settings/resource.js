@@ -13,3 +13,13 @@ export function useSaveSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
 }
+
+export const useHotelMarkup = () => useQuery({ queryKey: ['hotel-markup'], queryFn: () => api('/admin/hotel-markup') });
+
+export function useSaveHotelMarkup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (percent) => api('/admin/hotel-markup', { method: 'PUT', body: { percent } }),
+    onSuccess: (data) => qc.setQueryData(['hotel-markup'], data),
+  });
+}
