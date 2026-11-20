@@ -14,8 +14,19 @@ import { bookings } from '../resource';
 
 const pct = (b) => (b.total_millimes > 0 ? Math.min(100, Math.round((b.paid_millimes / b.total_millimes) * 100)) : 0);
 
+// Statuts du parcours « demande de réservation » d'abord, puis les anciens statuts (devis agence, paiement en ligne)
+const PILL_ORDER = ['pending_confirmation', 'contacted', 'confirmed', 'rejected', 'cancelled',
+  'pending_agency', 'awaiting_payment', 'paid', 'confirming', 'payment_failed', 'failed', 'expired'];
+
+function PayCell({ b, compact }) {
+  if (b.mode === 'request' && !(b.paid_millimes > 0)) {
+    return <span className={cn('block text-xs text-slate-500', !compact && 'mt-1')}>Règlement en agence</span>;
+  }
+  return null;
+}
+
 function StatusPills({ value, onChange }) {
-  const items = [['', 'Toutes'], ...Object.entries(STATUS).map(([k, v]) => [k, v.label])];
+  const items = [['', 'Toutes'], ...PILL_ORDER.filter((k) => STATUS[k]).map((k) => [k, STATUS[k].label])];
   return (
     <div className="-mx-4 mb-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
       <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
@@ -62,10 +73,16 @@ function BookingCard({ b }) {
       )}
 
       <div className="mt-3 flex items-center gap-3">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct(b)}%` }} />
-        </div>
-        <span className="text-xs text-slate-500">{pct(b)} % payé</span>
+        {b.mode === 'request' && !(b.paid_millimes > 0) ? (
+          <span className="flex-1"><PayCell b={b} compact /></span>
+        ) : (
+          <>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct(b)}%` }} />
+            </div>
+            <span className="text-xs text-slate-500">{pct(b)} % payé</span>
+          </>
+        )}
         <span className="text-sm font-semibold text-slate-900">{money(b.total_millimes)}</span>
       </div>
     </Link>
@@ -89,7 +106,8 @@ export default function Bookings() {
 
   return (
     <>
-      <PageHeader title="Réservations" description="Suivez les devis agence et les paiements en ligne." />
+      <PageHeader title="Réservations hôtels"
+                  description="Demandes de réservation envoyées depuis le site : vérifiez la disponibilité, appelez le client, puis confirmez ou refusez." />
 
       <FilterBar className="mb-3">
         <SearchBox value={search} onChange={setSearch} onSubmit={() => update({ q: search.trim(), page: '' })}
@@ -116,13 +134,17 @@ export default function Bookings() {
             { key: 'total', label: 'Montant', render: (b) => (
               <div className="min-w-32">
                 <span className="whitespace-nowrap font-medium text-slate-900">{money(b.total_millimes)}</span>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct(b)}%` }} />
-                </div>
-                <span className="mt-1 block text-xs text-slate-500">{pct(b)} % payé</span>
+                {b.mode === 'request' && !(b.paid_millimes > 0) ? <PayCell b={b} /> : (
+                  <>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct(b)}%` }} />
+                    </div>
+                    <span className="mt-1 block text-xs text-slate-500">{pct(b)} % payé</span>
+                  </>
+                )}
               </div>
             ) },
-            { key: 'branch', label: 'Agence', render: (b) => b.branch_name || <span className="text-slate-400">En ligne</span> },
+            { key: 'branch', label: 'Agence', render: (b) => b.branch_name || <span className="text-slate-400">{b.mode === 'request' ? 'Indifférente' : 'En ligne'}</span> },
             { key: 'status', label: 'Statut', render: (b) => <Badge tone={STATUS[b.status]?.cls} dot>{STATUS[b.status]?.label || b.status}</Badge> },
           ]}
         />

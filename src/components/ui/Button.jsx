@@ -8,7 +8,7 @@ const button = cva(
     variants: {
       variant: {
         primary: 'bg-brand-600 text-white shadow-xs hover:bg-brand-700 focus-visible:outline-brand-600',
-        accent: 'bg-linear-to-r from-orange-500 to-gold-400 text-slate-900 shadow-xs hover:brightness-105 focus-visible:outline-orange-500',
+        accent: 'bg-brand-600 text-white shadow-xs hover:bg-brand-700 focus-visible:outline-brand-600',
         secondary: 'bg-white text-slate-700 shadow-xs ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus-visible:outline-brand-600',
         ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-brand-600',
         danger: 'bg-red-600 text-white shadow-xs hover:bg-red-700 focus-visible:outline-red-600',

@@ -29,6 +29,7 @@ const Staff             = lazy(() => import('@/features/staff/StaffPage'));
 const Settings          = lazy(() => import('@/features/settings/SettingsPage'));
 const SupplierPayments  = lazy(() => import('@/features/supplier-payments/pages/SupplierPaymentsPage'));
 const TripRequests      = lazy(() => import('@/features/trip-requests/pages/TripRequestsPage'));
+const FlightRequests    = lazy(() => import('@/features/flight-requests/FlightRequestsPage'));
 const Contact           = lazy(() => import('@/features/contact-messages/ContactMessagesPage'));
 // Même casse que le nom du fichier : ClientsPage.jsx
 const ClientsPage       = lazy(() => import('@/features/clients/ClientsPage'));
@@ -62,10 +63,11 @@ export const router = createBrowserRouter([
       { path: 'bookings',            element: guard('bookings.read', <Bookings />) },
       { path: 'bookings/:reference', element: guard('bookings.read', <BookingDetail />) },
       { path: 'trip-requests',       element: guard('trips.manage', <TripRequests />) },
+      { path: 'flight-requests',     element: guard('bookings.read', <FlightRequests />) },
       { path: 'fleet/transport',     element: guard('fleet.read', <TransportRequests />) },
 
       { path: 'clients', element: guard('fleet.read', <ClientsPage />) },
-      { path: 'contact', element: guard('contact.read', <Contact />) },
+      { path: 'contact', element: guard('contacts.read', <Contact />) },
 
       { path: 'trips',        element: guard('trips.manage', <Trips scope="packages" />) },
       { path: 'trips/new',    element: guard('trips.manage', <TripEditPage scope="packages" />) },

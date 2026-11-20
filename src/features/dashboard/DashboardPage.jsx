@@ -130,8 +130,8 @@ export default function DashboardPage() {
 
   const kpis = [];
   if (b) {
-    kpis.push({ icon: ClipboardList, label: 'Devis agence à traiter', value: b.pending, tone: b.pending ? 'warn' : 'brand',
-      sub: `${b.new_today} nouvelle(s) aujourd'hui`, to: '/bookings?status=pending_agency' });
+    kpis.push({ icon: ClipboardList, label: "Demandes d'hôtel à confirmer", value: b.pending, tone: b.pending ? 'warn' : 'brand',
+      sub: `${b.new_today} nouvelle(s) aujourd'hui · ${b.flights_pending ?? 0} vol(s) à traiter`, to: '/bookings?status=pending_confirmation' });
     kpis.push({ icon: Banknote, label: 'Ventes du mois', value: money(b.sales_month), tone: 'gold', delta: b.sales_delta_pct,
       sub: 'vs même période du mois dernier', to: '/bookings' });
     kpis.push({ icon: Wallet, label: 'Encaissé ce mois', value: money(b.cash_month), tone: 'ok', delta: b.cash_delta_pct,

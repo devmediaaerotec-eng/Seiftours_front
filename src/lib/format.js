@@ -27,6 +27,8 @@ export const slugify = (s) =>
 // Les images locales sont relatives (/uploads/...). En production sur un autre domaine : VITE_ASSET_BASE=https://api.seiftours.tn
 
 export const STATUS = {
+  pending_confirmation: { label: 'À confirmer',   cls: 'warn' },
+  contacted:        { label: 'Client contacté',   cls: 'info' },
   pending_agency:   { label: 'En attente agence', cls: 'warn' },
   awaiting_payment: { label: 'Attente paiement',  cls: 'warn' },
   paid:             { label: 'Payée',             cls: 'ok' },
@@ -36,6 +38,7 @@ export const STATUS = {
   failed:           { label: 'Échec',             cls: 'bad' },
   cancelled:        { label: 'Annulée',           cls: 'bad' },
   expired:          { label: 'Expirée',           cls: 'muted' },
+  rejected:         { label: 'Refusée',           cls: 'bad' },
 };
 
 export const assetUrl = (u) =>

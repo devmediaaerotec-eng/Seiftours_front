@@ -40,7 +40,7 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-linear-to-br from-brand-950 via-brand-800 to-brand-600 p-12 text-white lg:flex">
-        <div className="absolute -right-24 -top-24 size-96 rounded-full bg-gold-400/10 blur-3xl" />
+        <div className="absolute -right-24 -top-24 size-96 rounded-full bg-brand-300/10 blur-3xl" />
         <div className="absolute -bottom-32 -left-20 size-96 rounded-full bg-brand-300/10 blur-3xl" />
         <div className="relative inline-flex w-fit rounded-2xl bg-white p-4 shadow-xl">
           <img src={logo} alt="Seif Tours" className="h-20 w-auto" />

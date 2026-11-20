@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Ban, Banknote, BedDouble, CalendarDays, CheckCircle2, ClipboardCheck, Copy, CreditCard,
-  History as HistoryIcon, Hotel, Hourglass, Landmark, Mail, MessageCircle, Moon, Phone, Receipt,
+  History as HistoryIcon, Hotel, Hourglass, Info, Landmark, Mail, MessageCircle, Moon, Pencil, Phone, PhoneCall, Receipt, Send,
   StickyNote, UserRound, Users, Utensils, Wallet, XCircle,
 } from 'lucide-react';
 import Alert from '@/components/ui/Alert';
@@ -22,7 +22,7 @@ import { bookings } from '../resource';
 
 /* ---------------------------------------------------------------- libellés */
 
-const MODE = { agency: 'Devis agence', deposit: 'Acompte en ligne' };
+const MODE = { request: 'Demande de réservation', agency: 'Devis agence', deposit: 'Acompte en ligne' };
 const SOURCE = { website: 'Site web', agency_walkin: "Visite en agence", phone: 'Téléphone', other: 'Autre' };
 const KIND = { deposit: 'Acompte', balance: 'Solde', full: 'Paiement total' };
 const PROVIDER = {
@@ -37,15 +37,19 @@ const DOT = {
 };
 
 const FLOWS = {
+  request: [['pending_confirmation', 'Demande reçue', Hourglass], ['contacted', 'Client contacté', PhoneCall], ['confirmed', 'Confirmée', CheckCircle2]],
   agency: [['pending_agency', 'Demande reçue', Hourglass], ['confirmed', 'Confirmée', CheckCircle2]],
   deposit: [['awaiting_payment', 'Paiement', CreditCard], ['paid', 'Payée', Wallet], ['confirming', 'Hôtel', Hotel], ['confirmed', 'Confirmée', CheckCircle2]],
 };
-const NEGATIVE = { cancelled: 'Annulée', expired: 'Expirée', failed: 'Échec', payment_failed: 'Paiement échoué' };
+const NEGATIVE = { cancelled: 'Annulée', expired: 'Expirée', failed: 'Échec', payment_failed: 'Paiement échoué', rejected: 'Refusée' };
 
 const HINTS = {
+  pending_confirmation: ['info', 'Demande à traiter', "Vérifiez la disponibilité et le prix final auprès de l'hôtel, puis appelez le client. Aucun paiement n'a été fait en ligne."],
+  contacted: ['info', 'Client contacté', "Confirmez la réservation une fois l'accord du client obtenu (le client peut régler en agence), ou refusez-la."],
+  rejected: ['info', 'Demande refusée', 'Le client a été informé que sa demande ne peut pas être satisfaite.'],
   pending_agency: ['info', 'Devis à traiter', 'Appelez le client, puis confirmez ou annulez ce dossier.'],
   awaiting_payment: ['info', 'Paiement en cours', "Le client est sur la page de paiement. Ce statut évolue tout seul."],
-  paid: ['info', 'Acompte reçu', "La réservation chez le fournisseur va être lancée automatiquement."],
+  paid: ['info', 'Acompte reçu', "Réservez la chambre chez le fournisseur, puis confirmez le dossier (ou marquez l'échec et remboursez)."],
   confirming: ['info', 'Réservation en cours', "Le système réserve l'hôtel chez le fournisseur."],
   confirmed: ['ok', 'Réservation confirmée', 'Suivez le séjour et encaissez le solde restant.'],
   payment_failed: ['warn', 'Paiement échoué', "Aucun montant n'a été débité. Vous pouvez rappeler le client."],
@@ -55,9 +59,27 @@ const HINTS = {
 };
 
 // Doit refléter les transitions autorisées côté serveur
-const TRANSITIONS = { pending_agency: ['confirmed', 'cancelled', 'expired'], confirmed: ['cancelled'] };
+const TRANSITIONS = {
+  pending_confirmation: ['contacted', 'confirmed', 'rejected', 'cancelled'],
+  contacted: ['confirmed', 'rejected', 'cancelled'],
+  pending_agency: ['confirmed', 'cancelled', 'expired'],
+  paid: ['confirmed', 'failed', 'cancelled'],
+  confirmed: ['cancelled'],
+};
 
 const ACTIONS = {
+  contacted: {
+    label: 'Client contacté', variant: 'secondary', icon: PhoneCall, perm: 'bookings.write',
+    title: 'Marquer le client comme contacté', confirm: 'Enregistrer',
+    text: 'Indiquez ce qui a été convenu avec le client (disponibilité, prix final, passage en agence…).',
+    noteLabel: 'Compte rendu (optionnel)', noteRequired: false,
+  },
+  rejected: {
+    label: 'Refuser la demande', variant: 'danger', icon: XCircle, perm: 'bookings.write',
+    title: 'Refuser la demande', confirm: 'Confirmer le refus',
+    text: "La demande sera close (ex. hôtel complet, client non intéressé par le prix final). Pensez à prévenir le client.",
+    noteLabel: 'Raison du refus *', noteRequired: true,
+  },
   confirmed: {
     label: 'Confirmer', variant: 'primary', icon: CheckCircle2, perm: 'bookings.write',
     title: 'Confirmer la réservation', confirm: 'Confirmer',
@@ -69,6 +91,12 @@ const ACTIONS = {
     title: 'Annuler la réservation', confirm: "Confirmer l'annulation",
     text: "Cette action clôt le dossier. Si un acompte a été payé, pensez ensuite à lancer le remboursement.",
     noteLabel: "Raison de l'annulation *", noteRequired: true,
+  },
+  failed: {
+    label: "Échec chez l'hôtel", variant: 'danger', icon: XCircle, perm: 'bookings.write',
+    title: 'Hôtel non réservé', confirm: "Confirmer l'échec",
+    text: "L'hôtel n'a pas pu être réservé malgré l'acompte payé. Le client devra être remboursé.",
+    noteLabel: 'Raison *', noteRequired: true,
   },
   expired: {
     label: 'Marquer expirée', variant: 'secondary', icon: Hourglass, perm: 'bookings.write',
@@ -96,7 +124,7 @@ function Stepper({ mode, status, history }) {
     if (status === 'confirmed') state = 'done';
     else if (!negative) state = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'todo';
     else if (i < maxIdx) state = 'done';
-    else if (i === maxIdx) state = key === 'pending_agency' || key === 'confirmed' ? 'done' : 'stopped';
+    else if (i === maxIdx) state = ['pending_agency', 'pending_confirmation', 'contacted', 'confirmed'].includes(key) ? 'done' : 'stopped';
     return { key, label, Icon, state };
   });
   if (negative) steps.push({ key: status, label: NEGATIVE[status], Icon: XCircle, state: 'fail' });
@@ -177,6 +205,92 @@ function ActionModal({ to, pending, onClose, onSubmit }) {
   );
 }
 
+function NoteForm({ reference, onSaved }) {
+  const toast = useToast();
+  const [body, setBody] = useState('');
+  const add = useMutation({
+    mutationFn: (text) => api(`/admin/bookings/${reference}/notes`, { method: 'POST', body: { body: text } }),
+  });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const text = body.trim();
+    if (!text) return;
+    try {
+      await add.mutateAsync(text);
+      setBody('');
+      toast.success('Note ajoutée.');
+      onSaved();
+    } catch (err) {
+      toast.error(err.status === 403 ? "Vous n'avez pas le droit d'ajouter une note." : err.message);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-4 border-t border-slate-100 pt-4">
+      <label className="block text-sm">
+        <span className="font-medium text-slate-700">Ajouter une note interne</span>
+        <textarea rows="3" maxLength={2000} className="mt-1.5" value={body} onChange={(e) => setBody(e.target.value)}
+                  placeholder="Ex. Client rappelé : disponibilité confirmée, passera à l'agence de Sousse samedi." />
+      </label>
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" icon={Send} loading={add.isPending} disabled={!body.trim()}>Ajouter la note</Button>
+      </div>
+    </form>
+  );
+}
+
+/** Prix final d'une demande : fixé par l'agence après vérification auprès de l'hôtel (le client ne peut pas le changer). */
+function PriceForm({ reference, totalMillimes, onSaved }) {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+  const save = useMutation({
+    mutationFn: (body) => api(`/admin/bookings/${reference}/price`, { method: 'PATCH', body }),
+  });
+
+  const start = () => { setValue(String(totalMillimes / 1000)); setReason(''); setError(''); setOpen(true); };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const total = Number(value.replace(',', '.'));
+    if (!Number.isFinite(total) || total <= 0 || total > 200000) { setError('Indiquez un prix valide (en TND).'); return; }
+    try {
+      await save.mutateAsync({ total, reason: reason.trim() || undefined });
+      toast.success('Prix mis à jour.');
+      setOpen(false);
+      onSaved();
+    } catch (err) {
+      setError(err.status === 403 ? "Vous n'avez pas le droit de modifier le prix." : err.message);
+    }
+  };
+
+  if (!open) {
+    return <Button size="sm" variant="secondary" icon={Pencil} className="mt-3 w-full" onClick={start}>Modifier le prix</Button>;
+  }
+  return (
+    <form onSubmit={submit} noValidate className="mt-3 space-y-2 rounded-lg bg-slate-50 p-3 ring-1 ring-inset ring-slate-200">
+      <label className="block text-sm">
+        <span className="font-medium text-slate-700">Nouveau prix total (TND)</span>
+        <input type="number" inputMode="decimal" min="0.001" max="200000" step="0.001" className="mt-1.5" autoFocus
+               value={value} onChange={(e) => setValue(e.target.value)} />
+      </label>
+      <label className="block text-sm">
+        <span className="font-medium text-slate-700">Motif <span className="font-normal text-slate-400">(facultatif)</span></span>
+        <input type="text" maxLength={500} className="mt-1.5" value={reason} onChange={(e) => setReason(e.target.value)}
+               placeholder="Ex. tarif confirmé par l'hôtel" />
+      </label>
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
+        <Button type="submit" size="sm" loading={save.isPending}>Enregistrer</Button>
+      </div>
+    </form>
+  );
+}
+
 function Skeleton() {
   return (
     <div className="animate-pulse space-y-6">
@@ -250,6 +364,7 @@ export default function BookingDetail() {
   const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
   const available = (TRANSITIONS[b.status] ?? []).filter((to) => can(ACTIONS[to].perm));
   const digits = String(b.phone ?? '').replace(/\D/g, '');
+  const isRequest = b.mode === 'request';
 
   return (
     <>
@@ -309,15 +424,30 @@ export default function BookingDetail() {
               <Button as="a" href={`mailto:${b.email}`} variant="secondary" size="sm" icon={Mail} className="min-w-[6.5rem] flex-1">E-mail</Button>
             </div>
             <dl className="mt-3 divide-y divide-slate-100">
+              {b.customer_title && <Row label="Civilité">{b.customer_title}</Row>}
               <Row label="Téléphone">{b.phone}</Row>
-              <Row label="Agence">{b.branch_name || 'En ligne'}</Row>
+              <Row label="E-mail">{b.email}</Row>
+              <Row label="Agence">{b.branch_name || (isRequest ? 'Pas de préférence' : 'En ligne')}</Row>
               {b.assigned_to_name && <Row label="Suivi par">{b.assigned_to_name}</Row>}
             </dl>
           </Panel>
 
           <Panel title="Montants" icon={Wallet}>
             <p className="text-3xl font-semibold tracking-tight text-slate-900">{money(total)}</p>
-            <p className="text-xs text-slate-500">Total de la réservation</p>
+            <p className="text-xs text-slate-500">{isRequest ? "Prix de la demande (modifiable par l'agence)" : 'Total de la réservation'}</p>
+            {isRequest && b.displayed_total_millimes != null && Number(b.displayed_total_millimes) !== total && (
+              <p className="mt-1 text-xs text-slate-500">Prix affiché au client lors de la demande : {money(b.displayed_total_millimes)}</p>
+            )}
+            {isRequest && can('bookings.write') && ['pending_confirmation', 'contacted', 'confirmed'].includes(b.status) && (
+              <PriceForm key={total} reference={b.reference} totalMillimes={total}
+                         onSaved={() => qc.invalidateQueries({ queryKey: bookings.keys.all })} />
+            )}
+            {isRequest && b.cost_millimes == null && (
+              <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
+                <Info className="mt-0.5 size-3.5 shrink-0" />
+                Prix non vérifié auprès du fournisseur au moment de la demande : contrôlez-le avant de le confirmer au client.
+              </p>
+            )}
             <div className="mt-4">
               <div className="mb-1.5 flex justify-between text-xs">
                 <span className="font-medium text-emerald-700">Payé : {pct} %</span>
@@ -406,7 +536,11 @@ export default function BookingDetail() {
           )}
 
           <Panel title="Paiements" icon={CreditCard}>
-            {payments.length === 0 ? <p className="text-sm text-slate-500">Aucun paiement enregistré.</p> : (
+            {payments.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                {isRequest ? "Aucun paiement en ligne : le client règle directement à l'agence après confirmation." : 'Aucun paiement enregistré.'}
+              </p>
+            ) : (
               <ul className="divide-y divide-slate-100">
                 {payments.map((p) => {
                   const [pLabel, PIcon] = PROVIDER[p.provider] ?? PROVIDER.other;
@@ -456,6 +590,9 @@ export default function BookingDetail() {
                   </li>
                 ))}
               </ul>
+            )}
+            {can('bookings.write') && (
+              <NoteForm reference={b.reference} onSaved={() => qc.invalidateQueries({ queryKey: bookings.keys.all })} />
             )}
           </Panel>
         </div>

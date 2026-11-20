@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CalendarCheck, Plane, Route, Tag, MapPin, Building2,
-  Radar, Bus, UserRound, Compass, BellRing, Users, Settings, Inbox, Ticket, Landmark, MessageSquare,
+  Radar, Bus, UserRound, Compass, BellRing, Users, Settings, Inbox, Ticket, Landmark, MessageSquare, PlaneTakeoff,
 } from 'lucide-react';
 
 export const NAV = [
@@ -9,10 +9,11 @@ export const NAV = [
   ]},
   { section: 'Ventes', items: [
     { label: 'Réservations hôtels', to: '/bookings', icon: CalendarCheck, perm: 'bookings.read' },
+    { label: 'Demandes de vols', to: '/flight-requests', icon: PlaneTakeoff, perm: 'bookings.read' },
     { label: 'Réservations voyages', to: '/trip-requests', icon: Ticket, perm: 'trips.manage' },
   ]},
   { section: 'Clients', items: [
-    { label: 'Messages des clients', to: '/contact', icon: MessageSquare, perm: 'contact.read' },
+    { label: 'Messages des clients', to: '/contact', icon: MessageSquare, perm: 'contacts.read' },
   ]},
   { section: 'Catalogue', items: [
     { label: 'Voyages organisés', to: '/trips', icon: Plane, perm: 'trips.manage' },
